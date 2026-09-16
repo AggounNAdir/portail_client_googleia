@@ -1,45 +1,27 @@
 import React from 'react';
-import {
-  Package,
-  FileText,
-  ShoppingCart,
-  MapPin,
-  CreditCard,
-  Wallet,
-  User,
-} from 'lucide-react';
+import { NavTabItem } from './NavigationRail';
 
 interface BottomNavBarProps {
-  currentIndex: number;
-  onSelectIndex: (index: number) => void;
-  cartCount: number;
+  currentTab: string;
+  onSelectTab: (tabId: string) => void;
+  tabs: NavTabItem[];
 }
 
 export const BottomNavBar: React.FC<BottomNavBarProps> = ({
-  currentIndex,
-  onSelectIndex,
-  cartCount,
+  currentTab,
+  onSelectTab,
+  tabs,
 }) => {
-  const destinations = [
-    { label: 'Produits', icon: Package },
-    { label: 'Commandes', icon: FileText },
-    { label: 'Panier', icon: ShoppingCart, badge: cartCount },
-    { label: 'Androway', icon: MapPin },
-    { label: 'Caisse', icon: CreditCard },
-    { label: 'Finances', icon: Wallet },
-    { label: 'Compte', icon: User },
-  ];
-
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-40 flex h-16 items-center justify-around border-t border-slate-200 bg-white/95 px-1 backdrop-blur-md md:hidden">
-      {destinations.map((item, index) => {
+      {tabs.map((item) => {
         const Icon = item.icon;
-        const isSelected = currentIndex === index;
+        const isSelected = currentTab === item.id;
 
         return (
           <button
-            key={item.label}
-            onClick={() => onSelectIndex(index)}
+            key={item.id}
+            onClick={() => onSelectTab(item.id)}
             className={`relative flex flex-col items-center justify-center py-1 text-[10px] font-medium transition-colors ${
               isSelected ? 'text-blue-600 font-bold' : 'text-slate-500 hover:text-slate-800'
             }`}

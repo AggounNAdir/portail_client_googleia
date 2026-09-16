@@ -22,58 +22,23 @@ import { androwaySyncService } from '../services/androwaySyncService';
 import { gpsTourneeService } from '../services/gpsTourneeService';
 import { vendeurAuthService } from '../services/vendeurAuthService';
 
-const INITIAL_TOURNEE: ClientTourneeItem[] = [
-  {
-    id: 1,
-    code: 'CLT-0012',
-    nom: 'Pharmacie Ibn Sina',
-    adresse: '04 Rue Didouche Mourad',
-    ville: 'Alger Centre',
-    creanceDZD: 45000.0,
-    lat: 36.768,
-    lng: 3.056,
-    isVisited: true,
-    visitedAt: '09:45',
-  },
-  {
-    id: 2,
-    code: 'CLT-0044',
-    nom: 'Pharmacie de l\'Avenir',
-    adresse: '12 Avenue Pasteur',
-    ville: 'Alger Centre',
-    creanceDZD: 128000.0,
-    lat: 36.772,
-    lng: 3.059,
-    isVisited: false,
-  },
-  {
-    id: 3,
-    code: 'CLT-0089',
-    nom: 'Pharmacie Belouizdad',
-    adresse: '88 Rue Mohamed Belouizdad',
-    ville: 'Belcourt',
-    creanceDZD: 0.0,
-    lat: 36.748,
-    lng: 3.068,
-    isVisited: false,
-  },
-  {
-    id: 4,
-    code: 'CLT-0105',
-    nom: 'Pharmacie des Martyrs',
-    adresse: '15 Boulevard des Martyrs',
-    ville: 'El Madania',
-    creanceDZD: 84500.0,
-    lat: 36.741,
-    lng: 3.054,
-    isVisited: false,
-  },
-];
+const INITIAL_TOURNEE: ClientTourneeItem[] = [];
 
 export const AndrowayTourneePage: React.FC = () => {
   const [clients, setClients] = useState<ClientTourneeItem[]>(() => {
     const saved = localStorage.getItem('androway_tournee_clients');
-    return saved ? JSON.parse(saved) : INITIAL_TOURNEE;
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        // Purge anciennes données démo de tournée
+        if (Array.isArray(parsed) && parsed.some((c: any) => c.code === 'CLT-0012')) {
+          localStorage.removeItem('androway_tournee_clients');
+          return [];
+        }
+        return parsed;
+      } catch (_) {}
+    }
+    return INITIAL_TOURNEE;
   });
 
   const [pendingCount, setPendingCount] = useState(androwaySyncService.getPendingCount());
@@ -486,97 +451,117 @@ export const AndrowayTourneePage: React.FC = () => {
       </div>
 
       {/* Liste des clients de la tournée */}
-      <div className="mt-4 space-y-3">
-        {filteredClients.map((client) => {
-          return (
-            <div
-              key={client.id}
-              className={`rounded-2xl border bg-white p-4 shadow-xs transition-all ${
-                client.isVisited ? 'border-teal-200 bg-teal-50/20' : 'border-slate-200'
-              }`}
-            >
-              <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs font-bold text-slate-400">
-                      {client.code}
-                    </span>
-                    {client.isVisited ? (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-0.5 text-[10px] font-bold text-teal-800">
-                        <CheckCircle2 className="h-3 w-3" />
-                        Visité à {client.visitedAt || 'OK'}
+      {filteredClients.length === 0 ? (
+        <div className="mt-6 flex flex-col items-center justify-center rounded-3xl border border-dashed border-slate-300 bg-white p-12 text-center shadow-xs">
+          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-teal-50 text-teal-600">
+            <MapPin className="h-7 w-7" />
+          </div>
+          <h4 className="mt-4 text-base font-bold text-slate-800">Aucun client dans la tournée</h4>
+          <p className="mt-1.5 max-w-md text-xs text-slate-500">
+            Aucune donnée de tournée n'est encore enregistrée. Vous pouvez ajouter un nouveau client ou prospect via le bouton ci-dessous, ou synchroniser avec votre serveur Silwane.
+          </p>
+          <button
+            type="button"
+            onClick={() => setShowProspectModal(true)}
+            className="mt-5 inline-flex items-center gap-2 rounded-xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-sm hover:bg-teal-700"
+          >
+            <UserPlus className="h-4 w-4" />
+            Nouveau Prospect / Client
+          </button>
+        </div>
+      ) : (
+        <div className="mt-4 space-y-3">
+          {filteredClients.map((client) => {
+            return (
+              <div
+                key={client.id}
+                className={`rounded-2xl border bg-white p-4 shadow-xs transition-all ${
+                  client.isVisited ? 'border-teal-200 bg-teal-50/20' : 'border-slate-200'
+                }`}
+              >
+                <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-center">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-slate-400">
+                        {client.code}
                       </span>
-                    ) : (
-                      <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600">
-                        <Clock className="h-3 w-3" />
-                        À visiter
+                      {client.isVisited ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-0.5 text-[10px] font-bold text-teal-800">
+                          <CheckCircle2 className="h-3 w-3" />
+                          Visité à {client.visitedAt || 'OK'}
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-0.5 text-[10px] font-bold text-slate-600">
+                          <Clock className="h-3 w-3" />
+                          À visiter
+                        </span>
+                      )}
+                    </div>
+
+                    <h3 className="mt-1 text-base font-bold text-slate-900">
+                      {client.nom}
+                    </h3>
+
+                    <div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
+                      <span className="flex items-center gap-1">
+                        <MapPin className="h-3.5 w-3.5 text-slate-400" />
+                        {client.adresse}, {client.ville}
                       </span>
-                    )}
+                      <span className="font-semibold text-slate-700">
+                        Créance :{' '}
+                        <span
+                          className={
+                            client.creanceDZD > 0
+                              ? 'font-bold text-amber-700'
+                              : 'font-medium text-slate-500'
+                          }
+                        >
+                          {client.creanceDZD.toLocaleString()} DZD
+                        </span>
+                      </span>
+                    </div>
                   </div>
 
-                  <h3 className="mt-1 text-base font-bold text-slate-900">
-                    {client.nom}
-                  </h3>
+                  {/* Boutons d'actions terrain */}
+                  <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 sm:border-0 sm:pt-0">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSellingClient(client);
+                      }}
+                      className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
+                    >
+                      <ShoppingCart className="h-3.5 w-3.5" />
+                      Vendre
+                    </button>
 
-                  <div className="mt-1 flex flex-wrap items-center gap-x-3 text-xs text-slate-500">
-                    <span className="flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5 text-slate-400" />
-                      {client.adresse}, {client.ville}
-                    </span>
-                    <span className="font-semibold text-slate-700">
-                      Créance :{' '}
-                      <span
-                        className={
-                          client.creanceDZD > 0
-                            ? 'font-bold text-amber-700'
-                            : 'font-medium text-slate-500'
-                        }
-                      >
-                        {client.creanceDZD.toLocaleString()} DZD
-                      </span>
-                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPaymentClient(client);
+                        setMontantEncaissement(client.creanceDZD > 0 ? client.creanceDZD.toString() : '');
+                      }}
+                      className="inline-flex items-center gap-1 rounded-xl bg-teal-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700"
+                    >
+                      <DollarSign className="h-3.5 w-3.5" />
+                      Encaisser
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handlePointerGps(client)}
+                      className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
+                    >
+                      <Navigation className="h-3.5 w-3.5 text-slate-500" />
+                      Pointer GPS
+                    </button>
                   </div>
-                </div>
-
-                {/* Boutons d'actions terrain */}
-                <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3 sm:border-0 sm:pt-0">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setSellingClient(client);
-                    }}
-                    className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
-                  >
-                    <ShoppingCart className="h-3.5 w-3.5" />
-                    Vendre
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setPaymentClient(client);
-                      setMontantEncaissement(client.creanceDZD > 0 ? client.creanceDZD.toString() : '');
-                    }}
-                    className="inline-flex items-center gap-1 rounded-xl bg-teal-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-teal-700"
-                  >
-                    <DollarSign className="h-3.5 w-3.5" />
-                    Encaisser
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => handlePointerGps(client)}
-                    className="inline-flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-100"
-                  >
-                    <Navigation className="h-3.5 w-3.5 text-slate-500" />
-                    Pointer GPS
-                  </button>
                 </div>
               </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* MODAL 1: Vente Terrain / Prise de Commande */}
       {sellingClient && (

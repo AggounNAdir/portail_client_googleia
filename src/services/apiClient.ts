@@ -22,220 +22,31 @@ const STORAGE_KEY_VENDEUR_TOKEN = 'jwt_vendeur_access_token';
 const STORAGE_KEY_CODE_VENDEUR = 'cached_code_vendeur';
 const STORAGE_KEY_VENDEUR_PROFILE = 'cached_vendeur_profile';
 
-export type TokenType = 'client' | 'vendeur';
+export type TokenType = 'client' | 'vendeur' | 'any';
 
 export const DEFAULT_API_BASE_URL = 'http://192.168.1.70:8000';
 
-// Données initiales locales de référence (synchronisées avec les modèles Flutter)
-const INITIAL_PRODUITS: ProduitCatalogue[] = [
-  {
-    id: 1,
-    code: 'ART-001',
-    designation: 'Paracétamol 500mg B/20',
-    unite: 'Bte',
-    prixUnitaire: 1.80,
-    stockActuel: 145,
-    tva: 19.0,
-  },
-  {
-    id: 2,
-    code: 'ART-002',
-    designation: 'Amoxicilline 1g B/14',
-    unite: 'Bte',
-    prixUnitaire: 5.20,
-    stockActuel: 68,
-    tva: 19.0,
-  },
-  {
-    id: 3,
-    code: 'ART-003',
-    designation: 'Sérum Salé 0.9% 500ml',
-    unite: 'Flacon',
-    prixUnitaire: 2.20,
-    stockActuel: 240,
-    tva: 19.0,
-  },
-  {
-    id: 4,
-    code: 'ART-004',
-    designation: 'Oméprazole 20mg B/28',
-    unite: 'Bte',
-    prixUnitaire: 8.90,
-    stockActuel: 35,
-    tva: 19.0,
-  },
-  {
-    id: 5,
-    code: 'ART-005',
-    designation: 'Vitamine C 1000mg Effervescente',
-    unite: 'Tube',
-    prixUnitaire: 4.50,
-    stockActuel: 110,
-    tva: 19.0,
-  },
-  {
-    id: 6,
-    code: 'ART-006',
-    designation: 'Doliprane 1000mg B/8',
-    unite: 'Bte',
-    prixUnitaire: 2.10,
-    stockActuel: 0,
-    tva: 19.0,
-  },
-  {
-    id: 7,
-    code: 'ART-007',
-    designation: 'Ibuprofène 400mg B/30',
-    unite: 'Bte',
-    prixUnitaire: 3.40,
-    stockActuel: 82,
-    tva: 19.0,
-  },
-  {
-    id: 8,
-    code: 'ART-008',
-    designation: 'Bétadine Dermique 10% 125ml',
-    unite: 'Flacon',
-    prixUnitaire: 6.80,
-    stockActuel: 40,
-    tva: 19.0,
-  },
-];
+// Données initiales locales vides (toutes les données proviennent du serveur FastAPI / Silwane)
+const INITIAL_PRODUITS: ProduitCatalogue[] = [];
 
 const INITIAL_PROFILE: ClientProfile = {
-  id: 1,
-  code: 'CLT-0001',
-  nom: 'Pharmacie Centrale El Madania',
-  adresse: '14 Boulevard des Martyrs, El Madania',
-  tel: '+213 23 54 12 80',
-  email: 'contact@pharmacie-elmadania.dz',
-  solde: 1450.00,
-  niveauPrix: 'Tarif Grossiste / A+',
+  id: 0,
+  code: '',
+  nom: '',
+  adresse: '',
+  tel: '',
+  email: '',
+  solde: 0.0,
+  niveauPrix: 'detail',
 };
 
-const INITIAL_COMMANDES: CommandeOut[] = [
-  {
-    id: 1,
-    numero: 'CMD-2026-0089',
-    dateCommande: '12/09/2026 14:30',
-    statut: 'En cours de préparation',
-    observations: 'Livrer par l\'entrée magasin arrière avant 16h',
-    totalEstime: 88.40,
-    lignes: [
-      {
-        id: 1,
-        produitId: 1,
-        code: 'ART-001',
-        designation: 'Paracétamol 500mg B/20',
-        quantite: 20,
-        prixUnitaireEstime: 1.80,
-        totalEstime: 36.00,
-      },
-      {
-        id: 2,
-        produitId: 2,
-        code: 'ART-002',
-        designation: 'Amoxicilline 1g B/14',
-        quantite: 10,
-        prixUnitaireEstime: 5.20,
-        totalEstime: 52.00,
-      },
-    ],
-  },
-  {
-    id: 2,
-    numero: 'CMD-2026-0042',
-    dateCommande: '04/09/2026 09:15',
-    statut: 'Livrée & Facturée',
-    observations: 'Commande urgente approvisionnement',
-    totalEstime: 124.50,
-    lignes: [
-      {
-        id: 3,
-        produitId: 4,
-        code: 'ART-004',
-        designation: 'Oméprazole 20mg B/28',
-        quantite: 10,
-        prixUnitaireEstime: 8.90,
-        totalEstime: 89.00,
-      },
-      {
-        id: 4,
-        produitId: 5,
-        code: 'ART-005',
-        designation: 'Vitamine C 1000mg Effervescente',
-        quantite: 8,
-        prixUnitaireEstime: 4.50,
-        totalEstime: 36.00,
-      },
-    ],
-  },
-];
+const INITIAL_COMMANDES: CommandeOut[] = [];
 
-const INITIAL_FACTURES: Facture[] = [
-  {
-    id: 101,
-    numero: 'FAC-2026-0144',
-    dateFacture: '05/09/2026',
-    totalHT: 124.50,
-    totalTVA: 23.65,
-    totalTTC: 148.15,
-    statut: 'Non payée',
-  },
-  {
-    id: 102,
-    numero: 'FAC-2026-0098',
-    dateFacture: '18/08/2026',
-    totalHT: 560.00,
-    totalTVA: 106.40,
-    totalTTC: 666.40,
-    statut: 'Réglée',
-  },
-];
+const INITIAL_FACTURES: Facture[] = [];
 
-const INITIAL_VERSEMENTS: Versement[] = [
-  {
-    id: 201,
-    numero: 'REG-2026-0081',
-    dateVers: '20/08/2026',
-    montant: 666.40,
-    mode: 'Virement bancaire',
-    reference: 'VIR-BNP-882194',
-  },
-  {
-    id: 202,
-    numero: 'REG-2026-0045',
-    dateVers: '02/07/2026',
-    montant: 450.00,
-    mode: 'Chèque',
-    reference: 'CHQ-BEA-009812',
-  },
-];
+const INITIAL_VERSEMENTS: Versement[] = [];
 
-const INITIAL_VENTES: BonVente[] = [
-  {
-    id: 301,
-    numero: 'BV-2026-0034',
-    dateBon: '05/09/2026',
-    total: 148.15,
-    lignes: [
-      {
-        id: 1,
-        designation: 'Oméprazole 20mg B/28',
-        quantite: 10,
-        prixUnitaire: 8.90,
-        montant: 89.00,
-      },
-      {
-        id: 2,
-        designation: 'Vitamine C 1000mg Effervescente',
-        quantite: 8,
-        prixUnitaire: 4.50,
-        montant: 36.00,
-      },
-    ],
-  },
-];
+const INITIAL_VENTES: BonVente[] = [];
 
 class ApiClient {
   private baseUrl: string;
@@ -349,13 +160,19 @@ class ApiClient {
       return fallbackData();
     }
 
-    // Le jeton attaché dépend de QUI appelle : un client du portail et un
-    // commercial en tournée (Silwane Androway) ont des jetons JWT distincts.
-    // Pour les routes partagées (ex: /produits), on envoie le jeton client s'il existe,
-    // sinon le jeton vendeur si l'utilisateur connecté est un commercial.
-    const token = tokenType === 'vendeur'
-      ? this.getVendeurAccessToken()
-      : (this.getAccessToken() || this.getVendeurAccessToken());
+    // Le jeton attaché dépend du type de requête :
+    // - Si tokenType === 'vendeur' : on injecte le jeton commercial Androway
+    // - Si tokenType === 'client' : on injecte uniquement le jeton client du portail
+    // - Si tokenType === 'any' : on injecte le jeton actif (client ou vendeur)
+    let token: string | null = null;
+    if (tokenType === 'vendeur') {
+      token = this.getVendeurAccessToken();
+    } else if (tokenType === 'client') {
+      token = this.getAccessToken();
+    } else {
+      // 'any' : prend en priorité le jeton client, sinon le jeton commercial
+      token = this.getAccessToken() || this.getVendeurAccessToken();
+    }
 
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -383,15 +200,26 @@ class ApiClient {
         const errJson = await response.json().catch(() => null);
         const serverDetail = errJson?.detail || 'Identifiants incorrects ou session non autorisée (401)';
 
-        if (tokenType === 'vendeur' || (!this.hasToken() && this.hasVendeurToken())) {
-          this.clearVendeurAuth();
-          window.dispatchEvent(new Event('vendeur:unauthorized'));
-          const err: any = new Error(serverDetail);
-          err.isAuthError = true;
-          throw err;
+        // RÈGLE CRITIQUE : Ne JAMAIS déconnecter la session sur un simple appel de données (ex: /produits, /commandes, /factures).
+        // Une déconnexion automatique (401) n'a de sens QUE si c'est la vérification explicite d'un profil de session (/clients/me, /vendeurs/me).
+        const isProfileCheck = path === '/clients/me' || path === '/vendeurs/me';
+
+        if (isProfileCheck) {
+          if (tokenType === 'vendeur' && this.hasVendeurToken()) {
+            this.clearVendeurAuth();
+            window.dispatchEvent(new Event('vendeur:unauthorized'));
+          } else if (tokenType === 'client' && this.hasToken()) {
+            this.clearAuth();
+            window.dispatchEvent(new Event('auth:unauthorized'));
+          }
         }
-        this.clearAuth();
-        window.dispatchEvent(new Event('auth:unauthorized'));
+
+        // Si des données locales ou de repli existent (catalogue, tournées, historique local),
+        // on les renvoie immédiatement pour maintenir la continuité sans bloquer l'utilisateur.
+        if (fallbackData) {
+          return fallbackData();
+        }
+
         const err: any = new Error(serverDetail);
         err.isAuthError = true;
         throw err;
@@ -405,11 +233,8 @@ class ApiClient {
       return (await response.json()) as T;
     } catch (err: any) {
       clearTimeout(timeoutId);
-      // Ne JAMAIS masquer une erreur d'authentification 401 explicite du serveur avec des fausses données de démo !
-      if (err?.isAuthError) {
-        throw err;
-      }
-      // Si une fonction de données locales est fournie, on l'utilise pour garantir la continuité hors-ligne
+      // Si une fonction de données locales est fournie, on l'utilise pour garantir la continuité
+      // SAUF si c'est une tentative de login échouée (loginRequest n'a pas de fallbackData)
       if (fallbackData) {
         return fallbackData();
       }
@@ -422,22 +247,32 @@ class ApiClient {
     const saved = localStorage.getItem('local_produits');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Purge anciens articles démo si présents
+        if (Array.isArray(parsed) && parsed.some((p: any) => p.code === 'ART-001')) {
+          localStorage.removeItem('local_produits');
+          return [];
+        }
+        return parsed;
       } catch (_) {}
     }
-    localStorage.setItem('local_produits', JSON.stringify(INITIAL_PRODUITS));
-    return INITIAL_PRODUITS;
+    return [];
   }
 
   public getLocalCommandes(): CommandeOut[] {
     const saved = localStorage.getItem('local_commandes');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        // Purge anciennes commandes démo si présentes
+        if (Array.isArray(parsed) && parsed.some((c: any) => c.numero === 'CMD-2026-0089')) {
+          localStorage.removeItem('local_commandes');
+          return [];
+        }
+        return parsed;
       } catch (_) {}
     }
-    localStorage.setItem('local_commandes', JSON.stringify(INITIAL_COMMANDES));
-    return INITIAL_COMMANDES;
+    return [];
   }
 
   public addLocalCommande(cmdIn: CommandeIn): CommandeOut {

@@ -76,6 +76,10 @@ export function normalizeBonVente(raw: any): BonVente {
 
 export class ClientService {
   async getMyProfile(): Promise<ClientProfile> {
+    if (!apiClient.hasToken()) {
+      return normalizeProfile(apiClient.getLocalProfile());
+    }
+
     const raw = await apiClient.request<any>(
       '/clients/me',
       { method: 'GET' },
@@ -85,6 +89,10 @@ export class ClientService {
   }
 
   async getFactures(limit = 20, offset = 0): Promise<Facture[]> {
+    if (!apiClient.hasToken()) {
+      return apiClient.getLocalFactures().slice(offset, offset + limit);
+    }
+
     const rawList = await apiClient.request<any[]>(
       `/clients/me/factures?limit=${limit}&offset=${offset}`,
       { method: 'GET' },
@@ -95,6 +103,10 @@ export class ClientService {
   }
 
   async getVersements(limit = 20, offset = 0): Promise<Versement[]> {
+    if (!apiClient.hasToken()) {
+      return apiClient.getLocalVersements().slice(offset, offset + limit);
+    }
+
     const rawList = await apiClient.request<any[]>(
       `/clients/me/versements?limit=${limit}&offset=${offset}`,
       { method: 'GET' },
@@ -105,6 +117,10 @@ export class ClientService {
   }
 
   async getVentes(limit = 20, offset = 0): Promise<BonVente[]> {
+    if (!apiClient.hasToken()) {
+      return apiClient.getLocalVentes().slice(offset, offset + limit);
+    }
+
     const rawList = await apiClient.request<any[]>(
       `/clients/me/ventes?limit=${limit}&offset=${offset}`,
       { method: 'GET' },

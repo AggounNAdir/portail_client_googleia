@@ -4,10 +4,11 @@ import { ProduitCatalogue } from '../types';
 import { produitService } from '../services/produitService';
 
 interface CataloguePageProps {
-  onAddToCart: (produit: ProduitCatalogue, quantite: number) => void;
+  onAddToCart?: (produit: ProduitCatalogue, quantite: number) => void;
+  userRole?: 'client' | 'vendeur' | null;
 }
 
-export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart }) => {
+export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userRole }) => {
   const [produits, setProduits] = useState<ProduitCatalogue[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -41,10 +42,14 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart }) => 
     loadProduits('');
   };
 
+  const isVendeur = userRole === 'vendeur';
+
   const handleAdd = (prd: ProduitCatalogue) => {
-    onAddToCart(prd, 1);
-    setAddedNotice(`Ajouté : ${prd.designation}`);
-    setTimeout(() => setAddedNotice(null), 2000);
+    if (onAddToCart) {
+      onAddToCart(prd, 1);
+      setAddedNotice(`Ajouté au panier : ${prd.designation}`);
+      setTimeout(() => setAddedNotice(null), 2000);
+    }
   };
 
   return (
@@ -150,21 +155,27 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart }) => 
                 <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
                   <div>
                     <div className="text-base font-black text-blue-600">
-                      {(prd.prixUnitaire ?? 0).toFixed(2)} € <span className="text-xs font-normal text-slate-500">HT</span>
+                      {(prd.prixUnitaire ?? 0).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA <span className="text-xs font-normal text-slate-500">HT</span>
                     </div>
                     <div className="text-[11px] text-slate-400">
                       Unité : {prd.unite || 'U'} • TVA {prd.tva ?? 19}%
                     </div>
                   </div>
 
-                  <button
-                    type="button"
-                    onClick={() => handleAdd(prd)}
-                    className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                    Ajouter
-                  </button>
+                  {!isVendeur ? (
+                    <button
+                      type="button"
+                      onClick={() => handleAdd(prd)}
+                      className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700 active:scale-95"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                      Ajouter
+                    </button>
+                  ) : (
+                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                      {prd.code}
+                    </span>
+                  )}
                 </div>
               </div>
             );

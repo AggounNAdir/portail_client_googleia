@@ -21,13 +21,16 @@ export function normalizeProduit(raw: any): ProduitCatalogue {
 }
 
 export class ProduitService {
-  async getCatalogue(query?: string, limit = 50, offset = 0): Promise<ProduitCatalogue[]> {
+  async getCatalogue(query?: string, limit = 50, offset = 0, clientId?: number): Promise<ProduitCatalogue[]> {
     const searchParams = new URLSearchParams({
       limit: limit.toString(),
       offset: offset.toString(),
     });
     if (query && query.trim()) {
       searchParams.set('q', query.trim());
+    }
+    if (clientId) {
+      searchParams.set('client_id', clientId.toString());
     }
 
     const rawList = await apiClient.request<any[]>(
@@ -44,7 +47,8 @@ export class ProduitService {
           );
         }
         return items.slice(offset, offset + limit);
-      }
+      },
+      'any'
     );
 
     if (!Array.isArray(rawList)) {

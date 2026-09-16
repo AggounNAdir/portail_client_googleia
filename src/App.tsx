@@ -1,11 +1,20 @@
 import React, { useState, useEffect } from 'react';
+import {
+  Package,
+  FileText,
+  ShoppingCart,
+  MapPin,
+  CreditCard,
+  Wallet,
+  User,
+} from 'lucide-react';
 import { authService } from './services/authService';
 import { vendeurAuthService } from './services/vendeurAuthService';
 import { CartItem, ProduitCatalogue, CommandeOut } from './types';
 import { Header } from './components/Header';
-import { NavigationRail } from './components/NavigationRail';
+import { NavigationRail, NavTabItem } from './components/NavigationRail';
 import { BottomNavBar } from './components/BottomNavBar';
-import { LoginPage, UserRole } from './views/LoginPage';
+import { LoginPage } from './views/LoginPage';
 import { CataloguePage } from './views/CataloguePage';
 import { CommandesPage } from './views/CommandesPage';
 import { CartPage } from './views/CartPage';
@@ -13,6 +22,8 @@ import { AndrowayTourneePage } from './views/AndrowayTourneePage';
 import { PosCaissePage } from './views/PosCaissePage';
 import { FinancesPage } from './views/FinancesPage';
 import { ProfilePage } from './views/ProfilePage';
+
+export type UserRole = 'client' | 'vendeur';
 
 const CART_STORAGE_KEY = 'portail_client_cart';
 
@@ -23,16 +34,21 @@ export const App: React.FC = () => {
     return null;
   });
 
-  const [currentTab, setCurrentTab] = useState<number>(() => {
-    if (vendeurAuthService.isAuthenticated()) return 3; // Silwane Androway tournée par défaut
-    return 0;
+  const [currentTab, setCurrentTab] = useState<string>(() => {
+    if (vendeurAuthService.isAuthenticated()) return 'androway';
+    return 'catalogue';
   });
 
   const [cart, setCart] = useState<CartItem[]>(() => {
     const saved = localStorage.getItem(CART_STORAGE_KEY);
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.some((item: any) => item.produit?.code === 'ART-001')) {
+          localStorage.removeItem(CART_STORAGE_KEY);
+          return [];
+        }
+        return parsed;
       } catch (_) {}
     }
     return [];
@@ -104,15 +120,15 @@ export const App: React.FC = () => {
     await authService.logout();
     await vendeurAuthService.logout();
     setUserRole(null);
-    setCurrentTab(0);
+    setCurrentTab('catalogue');
   };
 
   const handleLoginSuccess = (role: UserRole) => {
     setUserRole(role);
     if (role === 'vendeur') {
-      setCurrentTab(3); // Redirige directement vers la tournée Androway
+      setCurrentTab('androway'); // Redirige directement vers la tournée Androway
     } else {
-      setCurrentTab(0); // Redirige vers le catalogue client
+      setCurrentTab('catalogue'); // Redirige vers le catalogue client
     }
   };
 
@@ -120,76 +136,131 @@ export const App: React.FC = () => {
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
 
-  const tabTitles = [
-    'Catalogue Produits',
-    'Historique Commandes',
-    'Mon Panier',
-    'Silwane Androway',
-    'Caisse Comptoir POS',
-    'Finances & Règlements',
-    userRole === 'vendeur' ? 'Mon Compte Commercial' : 'Mon Compte Client',
-  ];
-
-  const tabSubtitles = [
-    'Consultez les prix et disponibilités en temps réel',
-    'Suivi de vos commandes passées',
-    'Validation et devis de commande',
-    'Gestion de tournée commerciale et pointage terrain',
-    'Encaissement rapide et impression thermique 80mm',
-    'Consultation de vos factures et règlements',
-    userRole === 'vendeur'
-      ? 'Détails du commercial et statut de synchronisation'
-      : 'Détails de tarification et solde comptable',
-  ];
-
   const totalCartCount = cart.reduce((sum, item) => sum + item.quantite, 0);
+
+  // Configuration des onglets selon le rôle de l'utilisateur connecté
+  const clientTabs: (NavTabItem & { title: string; subtitle: string })[] = [
+    {
+      id: 'catalogue',
+      label: 'Produits',
+      icon: Package,
+      title: 'Catalogue Produits',
+      subtitle: 'Consultez les prix et disponibilités en temps réel',
+    },
+    {
+      id: 'commandes',
+      label: 'Commandes',
+      icon: FileText,
+      title: 'Historique Commandes',
+      subtitle: 'Suivi de vos commandes passées',
+    },
+    {
+      id: 'panier',
+      label: 'Panier',
+      icon: ShoppingCart,
+      badge: totalCartCount,
+      title: 'Mon Panier',
+      subtitle: 'Validation et devis de commande',
+    },
+    {
+      id: 'finances',
+      label: 'Finances',
+      icon: Wallet,
+      title: 'Finances & Règlements',
+      subtitle: 'Consultation de vos factures et règlements',
+    },
+    {
+      id: 'compte',
+      label: 'Compte',
+      icon: User,
+      title: 'Mon Compte Client',
+      subtitle: 'Détails de tarification et solde comptable',
+    },
+  ];
+
+  const vendeurTabs: (NavTabItem & { title: string; subtitle: string })[] = [
+    {
+      id: 'androway',
+      label: 'Androway',
+      icon: MapPin,
+      title: 'Silwane Androway',
+      subtitle: 'Gestion de tournée commerciale et pointage terrain',
+    },
+    {
+      id: 'caisse',
+      label: 'Caisse POS',
+      icon: CreditCard,
+      title: 'Caisse Comptoir POS',
+      subtitle: 'Encaissement rapide et impression thermique 80mm',
+    },
+    {
+      id: 'catalogue',
+      label: 'Produits',
+      icon: Package,
+      title: 'Catalogue & Stock',
+      subtitle: 'Consultation des stocks et prix articles',
+    },
+    {
+      id: 'compte',
+      label: 'Compte',
+      icon: User,
+      title: 'Mon Compte Commercial',
+      subtitle: 'Détails du commercial et statut de synchronisation',
+    },
+  ];
+
+  const activeTabs = userRole === 'vendeur' ? vendeurTabs : clientTabs;
+  const currentTabMeta = activeTabs.find((t) => t.id === currentTab) || activeTabs[0];
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans">
       {/* Navigation latérale Desktop */}
       <NavigationRail
-        currentIndex={currentTab}
-        onSelectIndex={setCurrentTab}
-        cartCount={totalCartCount}
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        tabs={activeTabs}
+        userRole={userRole}
       />
 
       {/* Zone de contenu principale */}
       <div className="flex flex-1 flex-col overflow-hidden">
         <Header
-          title={tabTitles[currentTab]}
-          subtitle={tabSubtitles[currentTab]}
+          title={currentTabMeta.title}
+          subtitle={currentTabMeta.subtitle}
           onLogout={handleLogout}
-          showSyncBadge={currentTab === 3 || currentTab === 4}
+          showSyncBadge={currentTab === 'androway' || currentTab === 'caisse'}
           userRole={userRole}
         />
 
         <main className="flex-1 overflow-y-auto">
-          {currentTab === 0 && <CataloguePage onAddToCart={handleAddToCart} />}
-          {currentTab === 1 && <CommandesPage />}
-          {currentTab === 2 && (
+          {currentTab === 'catalogue' && (
+            <CataloguePage onAddToCart={handleAddToCart} userRole={userRole} />
+          )}
+          {currentTab === 'commandes' && <CommandesPage />}
+          {currentTab === 'panier' && (
             <CartPage
               cart={cart}
               onUpdateQuantity={handleUpdateQuantity}
               onRemoveItem={handleRemoveFromCart}
               onClearCart={handleClearCart}
               onOrderCompleted={(_cmd: CommandeOut) => {
-                setCurrentTab(1); // Redirection vers l'historique des commandes
+                setCurrentTab('commandes'); // Redirection vers l'historique des commandes
               }}
-              onGoToCatalogue={() => setCurrentTab(0)}
+              onGoToCatalogue={() => setCurrentTab('catalogue')}
             />
           )}
-          {currentTab === 3 && <AndrowayTourneePage />}
-          {currentTab === 4 && <PosCaissePage />}
-          {currentTab === 5 && <FinancesPage />}
-          {currentTab === 6 && <ProfilePage onLogout={handleLogout} userRole={userRole} />}
+          {currentTab === 'androway' && <AndrowayTourneePage />}
+          {currentTab === 'caisse' && <PosCaissePage />}
+          {currentTab === 'finances' && <FinancesPage />}
+          {currentTab === 'compte' && <ProfilePage onLogout={handleLogout} userRole={userRole} />}
         </main>
       </div>
 
       {/* Navigation inférieure Mobile */}
       <BottomNavBar
-        currentIndex={currentTab}
-        onSelectIndex={setCurrentTab}
-        cartCount={totalCartCount}
+        currentTab={currentTab}
+        onSelectTab={setCurrentTab}
+        tabs={activeTabs}
       />
     </div>
   );

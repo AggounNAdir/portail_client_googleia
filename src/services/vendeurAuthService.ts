@@ -19,15 +19,13 @@ export class VendeurAuthService {
 
     const payload = {
       code_vendeur: trimmedCode,
-      username: trimmedCode,
-      code: trimmedCode,
       password: password,
     };
 
     let data: any;
 
     try {
-      // 1. Tente l'endpoint standard Silwane / Androway : /auth/login-vendeur
+      // 1. Appel direct de l'endpoint FastAPI : /auth/login-vendeur
       data = await apiClient.request<any>(
         '/auth/login-vendeur',
         {
@@ -38,7 +36,7 @@ export class VendeurAuthService {
         'vendeur'
       );
     } catch (err: any) {
-      // Si l'endpoint /auth/login-vendeur n'existe pas (404), tester la variante /auth/vendeur/login
+      // Si l'endpoint /auth/login-vendeur renvoie 404 (non trouvé)
       if (err?.message && (err.message.includes('404') || err.message.toLowerCase().includes('not found'))) {
         try {
           data = await apiClient.request<any>(
@@ -51,20 +49,7 @@ export class VendeurAuthService {
             'vendeur'
           );
         } catch (err2: any) {
-          if (err2?.message && (err2.message.includes('404') || err2.message.toLowerCase().includes('not found'))) {
-            // Tente également /auth/login avec rôle vendeur
-            data = await apiClient.request<any>(
-              '/auth/login',
-              {
-                method: 'POST',
-                body: JSON.stringify({ ...payload, role: 'vendeur', user_type: 'vendeur' }),
-              },
-              undefined,
-              'vendeur'
-            );
-          } else {
-            throw err2;
-          }
+          throw err2;
         }
       } else {
         throw err;

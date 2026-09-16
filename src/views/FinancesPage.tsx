@@ -124,10 +124,10 @@ export const FinancesPage: React.FC = () => {
 
                 <div className="text-right">
                   <div className="text-sm font-black text-slate-900">
-                    {(fac.totalTTC ?? 0).toFixed(2)} € <span className="text-xs font-normal text-slate-500">TTC</span>
+                    {(fac.totalTTC ?? 0).toFixed(2)} DA <span className="text-xs font-normal text-slate-500">TTC</span>
                   </div>
                   <div className="text-[11px] text-slate-400">
-                    HT: {(fac.totalHT ?? 0).toFixed(2)} € • TVA: {(fac.totalTVA ?? 0).toFixed(2)} €
+                    HT: {(fac.totalHT ?? 0).toFixed(2)} DA • TVA: {(fac.totalTVA ?? 0).toFixed(2)} DA
                   </div>
                 </div>
               </div>
@@ -161,7 +161,7 @@ export const FinancesPage: React.FC = () => {
 
                 <div className="text-right">
                   <div className="text-base font-black text-teal-600">
-                    +{(vers.montant ?? 0).toFixed(2)} €
+                    +{(vers.montant ?? 0).toFixed(2)} DA
                   </div>
                   <div className="text-[10px] font-bold text-teal-800">Validé</div>
                 </div>
@@ -186,7 +186,7 @@ export const FinancesPage: React.FC = () => {
                     {bv.numero}
                   </div>
                   <div className="text-sm font-black text-slate-900">
-                    {(bv.total ?? 0).toFixed(2)} €
+                    {(bv.total ?? 0).toFixed(2)} DA
                   </div>
                 </div>
                 <div className="text-[11px] text-slate-400">Date : {bv.dateBon}</div>
@@ -194,7 +194,7 @@ export const FinancesPage: React.FC = () => {
                   {(bv.lignes || []).map((l) => (
                     <div key={l.id} className="flex justify-between py-0.5">
                       <span>• {l.designation} (x{l.quantite})</span>
-                      <span className="font-medium">{(l.montant ?? 0).toFixed(2)} €</span>
+                      <span className="font-medium">{(l.montant ?? 0).toFixed(2)} DA</span>
                     </div>
                   ))}
                 </div>

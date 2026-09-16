@@ -27,8 +27,8 @@ interface LoginPageProps {
 
 export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [authMode, setAuthMode] = useState<UserRole>('client');
-  const [identifiant, setIdentifiant] = useState('CLT-0001');
-  const [password, setPassword] = useState('secret123');
+  const [identifiant, setIdentifiant] = useState('');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -37,13 +37,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const handleSwitchMode = (mode: UserRole) => {
     setAuthMode(mode);
     setErrorMessage(null);
-    if (mode === 'client') {
-      setIdentifiant('CLT-0001');
-      setPassword('secret123');
-    } else {
-      setIdentifiant('VND-001');
-      setPassword('secret123');
-    }
+    setIdentifiant('');
+    setPassword('');
   };
 
   const isVendeurLikeCode =
@@ -283,11 +278,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
           <p className="text-[11px] text-slate-400 text-center">
             {authMode === 'vendeur' ? (
               <>
-                Route API : <span className="font-mono font-semibold text-slate-600">/auth/login-vendeur</span> • Démo : <span className="font-mono font-bold text-slate-600">VND-001</span>
+                Authentification Vendeur / Commercial • Route API : <span className="font-mono font-semibold text-slate-600">/auth/login-vendeur</span>
               </>
             ) : (
               <>
-                Route API : <span className="font-mono font-semibold text-slate-600">/auth/login</span> • Démo : <span className="font-mono font-bold text-slate-600">CLT-0001</span>
+                Authentification Client • Route API : <span className="font-mono font-semibold text-slate-600">/auth/login</span>
               </>
             )}
           </p>

@@ -7,6 +7,13 @@ export interface LoginResponse {
   tokenType: string;
 }
 
+export type AuthResponse = LoginResponse;
+
+export interface LoginCredentials {
+  codeClient: string;
+  password: string;
+}
+
 export class AuthService {
   async login(codeClient: string, password: string): Promise<LoginResponse> {
     const trimmedCode = codeClient.trim();
@@ -18,7 +25,6 @@ export class AuthService {
           method: 'POST',
           body: JSON.stringify({
             code_client: trimmedCode,
-            username: trimmedCode,
             password: password,
           }),
         },

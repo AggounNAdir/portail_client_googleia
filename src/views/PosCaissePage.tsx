@@ -11,36 +11,14 @@ import {
   X,
   CreditCard,
 } from 'lucide-react';
-import { PosArticleLigne } from '../types';
+import { PosArticleLigne, ProduitCatalogue } from '../types';
 import { posThermalPrinterService, ReceiptData } from '../services/posThermalPrinterService';
-
-const ARTICLES_RAPIDES = [
-  { designation: 'Paracétamol 500mg B/20', prix: 180.0, codeBarre: '6131102948123' },
-  { designation: 'Amoxicilline 1g B/14', prix: 520.0, codeBarre: '6131105829104' },
-  { designation: 'Sérum Salé 0.9% 500ml', prix: 220.0, codeBarre: '6131108273619' },
-  { designation: 'Oméprazole 20mg B/28', prix: 890.0, codeBarre: '6131109182736' },
-  { designation: 'Vitamine C 1000mg Eff.', prix: 450.0, codeBarre: '6131104829102' },
-];
+import { produitService } from '../services/produitService';
 
 export const PosCaissePage: React.FC = () => {
-  const [panier, setPanier] = useState<PosArticleLigne[]>([
-    {
-      id: '1',
-      designation: 'Paracétamol 500mg B/20',
-      codeBarre: '6131102948123',
-      prix: 180,
-      quantite: 2,
-    },
-    {
-      id: '2',
-      designation: 'Amoxicilline 1g B/14',
-      codeBarre: '6131105829104',
-      prix: 520,
-      quantite: 1,
-    },
-  ]);
-
-  const [especesRecues, setEspecesRecues] = useState<number>(2000);
+  const [panier, setPanier] = useState<PosArticleLigne[]>([]);
+  const [produitsCatalogue, setProduitsCatalogue] = useState<ProduitCatalogue[]>([]);
+  const [especesRecues, setEspecesRecues] = useState<number>(0);
   const [modePaiement, setModePaiement] = useState<string>('Espèces');
   const [ticketDialog, setTicketDialog] = useState<{
     bytesLength: number;
@@ -48,6 +26,12 @@ export const PosCaissePage: React.FC = () => {
   } | null>(null);
 
   const [barcodeInput, setBarcodeInput] = useState('');
+
+  React.useEffect(() => {
+    produitService.getCatalogue().then((items) => {
+      setProduitsCatalogue(items.slice(0, 8));
+    }).catch(() => {});
+  }, []);
 
   const totalTTC = panier.reduce((sum, item) => sum + item.prix * item.quantite, 0);
   const totalHT = totalTTC / 1.19;
@@ -78,11 +62,11 @@ export const PosCaissePage: React.FC = () => {
   const handleBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!barcodeInput.trim()) return;
-    const found = ARTICLES_RAPIDES.find((a) => a.codeBarre === barcodeInput.trim());
+    const found = produitsCatalogue.find((a) => a.code === barcodeInput.trim());
     if (found) {
-      handleAjouterArticle(found.designation, found.prix, found.codeBarre);
+      handleAjouterArticle(found.designation, found.prixUnitaire, found.code);
     } else {
-      handleAjouterArticle(`Article Scanné ${barcodeInput}`, 300, barcodeInput.trim());
+      handleAjouterArticle(`Article Scanné ${barcodeInput}`, 0, barcodeInput.trim());
     }
     setBarcodeInput('');
   };
@@ -145,20 +129,22 @@ export const PosCaissePage: React.FC = () => {
           </form>
         </div>
 
-        <div className="flex flex-wrap gap-2">
-          {ARTICLES_RAPIDES.map((art) => (
-            <button
-              key={art.codeBarre}
-              type="button"
-              onClick={() => handleAjouterArticle(art.designation, art.prix, art.codeBarre)}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-blue-300 hover:bg-blue-50"
-            >
-              <Plus className="h-3.5 w-3.5 text-blue-600" />
-              <span>{art.designation}</span>
-              <span className="font-bold text-slate-900">({art.prix.toFixed(0)} DA)</span>
-            </button>
-          ))}
-        </div>
+        {produitsCatalogue.length > 0 && (
+          <div className="flex flex-wrap gap-2">
+            {produitsCatalogue.map((art) => (
+              <button
+                key={art.id}
+                type="button"
+                onClick={() => handleAjouterArticle(art.designation, art.prixUnitaire, art.code)}
+                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-blue-300 hover:bg-blue-50"
+              >
+                <Plus className="h-3.5 w-3.5 text-blue-600" />
+                <span>{art.designation}</span>
+                <span className="font-bold text-slate-900">({art.prixUnitaire.toFixed(0)} DA)</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Panier Caisse */}

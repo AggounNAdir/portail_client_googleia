@@ -47,7 +47,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, userRole }) 
               Compte Commercial Silwane Androway
             </div>
             <span className="rounded-full bg-amber-700/60 px-3 py-1 font-mono text-xs font-bold text-white backdrop-blur-xs">
-              {vendeur?.code || 'VND-001'}
+              {vendeur?.code || 'N/A'}
             </span>
           </div>
 
@@ -82,7 +82,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, userRole }) 
               <Tag className="h-4 w-4 text-slate-400" />
               <div className="flex-1">
                 <div className="text-slate-400 text-[11px]">Code Vendeur ERP</div>
-                <div className="font-mono font-bold text-amber-700">{vendeur?.code || 'VND-001'}</div>
+                <div className="font-mono font-bold text-amber-700">{vendeur?.code || 'N/A'}</div>
               </div>
             </div>
 
@@ -90,7 +90,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, userRole }) 
               <Phone className="h-4 w-4 text-slate-400" />
               <div className="flex-1">
                 <div className="text-slate-400 text-[11px]">Téléphone Commercial</div>
-                <div className="font-medium text-slate-800">{vendeur?.tel || '0550 12 34 56'}</div>
+                <div className="font-medium text-slate-800">{vendeur?.tel || 'Non renseigné'}</div>
               </div>
             </div>
 
@@ -143,7 +143,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, userRole }) 
 
         <div className="mt-4">
           <div className="text-3xl font-black sm:text-4xl">
-            {(profile.solde ?? 0).toFixed(2)} €
+            {(profile.solde ?? 0).toFixed(2)} DA
           </div>
           <p className="mt-1 text-xs text-blue-200">
             {(profile.solde ?? 0) > 0

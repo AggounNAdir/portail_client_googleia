@@ -35,6 +35,11 @@ export function normalizeCommande(raw: any): CommandeOut {
 
 export class CommandeService {
   async getCommandes(limit = 20, offset = 0): Promise<CommandeOut[]> {
+    if (!apiClient.hasToken()) {
+      const list = apiClient.getLocalCommandes();
+      return list.slice(offset, offset + limit);
+    }
+
     const rawList = await apiClient.request<any[]>(
       `/commandes?limit=${limit}&offset=${offset}`,
       { method: 'GET' },
