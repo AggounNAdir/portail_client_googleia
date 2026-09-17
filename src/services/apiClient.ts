@@ -161,7 +161,6 @@ class ApiClient {
     }
 
     // Le jeton attaché dépend du type de requête :
-<<<<<<< HEAD
     // - Si tokenType === 'vendeur' : on injecte en priorité le jeton commercial Androway, sinon le jeton actif
     // - Si tokenType === 'client' : on injecte en priorité le jeton client du portail, sinon le jeton actif
     // - Si tokenType === 'any' : on injecte le premier jeton disponible
@@ -172,19 +171,6 @@ class ApiClient {
       token = this.getAccessToken() || this.getVendeurAccessToken();
     } else {
       token = this.getVendeurAccessToken() || this.getAccessToken();
-=======
-    // - Si tokenType === 'vendeur' : on injecte le jeton commercial Androway
-    // - Si tokenType === 'client' : on injecte uniquement le jeton client du portail
-    // - Si tokenType === 'any' : on injecte le jeton actif (client ou vendeur)
-    let token: string | null = null;
-    if (tokenType === 'vendeur') {
-      token = this.getVendeurAccessToken();
-    } else if (tokenType === 'client') {
-      token = this.getAccessToken();
-    } else {
-      // 'any' : prend en priorité le jeton client, sinon le jeton commercial
-      token = this.getAccessToken() || this.getVendeurAccessToken();
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
     }
 
     const headers: Record<string, string> = {
@@ -194,13 +180,9 @@ class ApiClient {
     };
 
     if (token) {
-<<<<<<< HEAD
       // Nettoyer tout préfixe 'Bearer ' déjà présent pour éviter 'Bearer Bearer <token>'
       const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
       headers['Authorization'] = `Bearer ${cleanToken}`;
-=======
-      headers['Authorization'] = `Bearer ${token}`;
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
     }
 
     const controller = new AbortController();
@@ -306,22 +288,15 @@ class ApiClient {
     const lignes = cmdIn.lignes.map((l, idx) => {
       const p = produits.find((pr) => pr.id === l.produitId);
       const pu = p?.prixUnitaire || 0;
-<<<<<<< HEAD
       const uniteFacteur = p?.uniteFacteur || 1;
       const total = pu * uniteFacteur * l.quantite;
-=======
-      const total = pu * l.quantite;
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
       totalEstime += total;
       return {
         id: idx + 1,
         produitId: l.produitId,
         code: p?.code || 'ART-NC',
         designation: p?.designation || 'Article',
-<<<<<<< HEAD
         unite: p?.unite || '1',
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
         quantite: l.quantite,
         prixUnitaireEstime: pu,
         totalEstime: total,
@@ -370,7 +345,6 @@ class ApiClient {
   public getLocalVentes(): BonVente[] {
     return INITIAL_VENTES;
   }
-<<<<<<< HEAD
 
   // ---------- PROSPECTS CLIENTS (Table prospects_client) ----------
   public async getClients(): Promise<any[]> {
@@ -398,8 +372,6 @@ class ApiClient {
       'vendeur'
     );
   }
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
 }
 
 export const apiClient = new ApiClient();

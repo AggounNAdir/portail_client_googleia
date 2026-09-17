@@ -5,7 +5,6 @@ import { apiClient } from './apiClient';
 
 // Helper pour normaliser un produit venant de FastAPI (snake_case ou camelCase)
 export function normalizeProduit(raw: any): ProduitCatalogue {
-<<<<<<< HEAD
   const prix = raw.prixUnitaire ?? raw.prix_unitaire ?? raw.prix_vente ?? raw.prix ?? raw.pu ?? raw.price ?? 0;
   const stock = raw.stockActuel ?? raw.stock_actuel ?? raw.stock ?? raw.qte ?? 0;
   const tvaVal = raw.tva ?? raw.taux_tva ?? raw.tva_taux ?? 19.0;
@@ -45,23 +44,13 @@ export function normalizeProduit(raw: any): ProduitCatalogue {
     }
   }
 
-=======
-  const prix = raw.prixUnitaire ?? raw.prix_unitaire ?? raw.prix ?? raw.pu ?? raw.price ?? 0;
-  const stock = raw.stockActuel ?? raw.stock_actuel ?? raw.stock ?? raw.qte ?? 0;
-  const tvaVal = raw.tva ?? raw.taux_tva ?? raw.tva_taux ?? 19.0;
-
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   return {
     id: Number(raw.id ?? Math.floor(Math.random() * 100000)),
     code: String(raw.code ?? raw.reference ?? raw.ref ?? 'ART-NC'),
     designation: String(raw.designation ?? raw.nom ?? raw.libelle ?? raw.label ?? 'Article'),
-<<<<<<< HEAD
     unite: uniteStr,
     facteurConversion,
     uniteFacteur: facteurConversion,
-=======
-    unite: String(raw.unite ?? raw.unit ?? 'U'),
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
     prixUnitaire: typeof prix === 'number' ? prix : parseFloat(prix) || 0,
     stockActuel: typeof stock === 'number' ? stock : parseFloat(stock) || 0,
     tva: typeof tvaVal === 'number' ? tvaVal : parseFloat(tvaVal) || 19.0,

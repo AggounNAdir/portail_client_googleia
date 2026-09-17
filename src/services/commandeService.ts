@@ -57,19 +57,13 @@ export class CommandeService {
   }
 
   async creerCommande(commande: CommandeIn): Promise<CommandeOut> {
-<<<<<<< HEAD
     const codeClient = apiClient.getCachedCodeClient();
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
     const raw = await apiClient.request<any>(
       '/commandes',
       {
         method: 'POST',
         body: JSON.stringify({
-<<<<<<< HEAD
           code_client: codeClient || undefined,
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
           observations: commande.observations || null,
           lignes: commande.lignes.map((l) => ({
             produit_id: l.produitId,
@@ -79,12 +73,8 @@ export class CommandeService {
       },
       () => {
         return apiClient.addLocalCommande(commande);
-<<<<<<< HEAD
       },
       'any'
-=======
-      }
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
     );
 
     return normalizeCommande(raw);

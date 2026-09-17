@@ -5,11 +5,8 @@ export interface ProduitCatalogue {
   code: string;
   designation: string;
   unite: string;
-<<<<<<< HEAD
   facteurConversion?: number;
   uniteFacteur?: number;
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   prixUnitaire: number;
   stockActuel: number;
   tva: number;
@@ -35,10 +32,7 @@ export interface CommandeLigneOut {
   produitId: number;
   code: string;
   designation: string;
-<<<<<<< HEAD
   unite?: string;
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   quantite: number;
   prixUnitaireEstime: number;
   totalEstime: number;

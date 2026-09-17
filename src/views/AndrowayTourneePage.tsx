@@ -16,7 +16,6 @@ import {
   Search,
   LogOut,
   Lock,
-<<<<<<< HEAD
   Package,
 } from 'lucide-react';
 import { ClientTourneeItem, ProduitCatalogue } from '../types';
@@ -38,16 +37,6 @@ const formatDZD = (val: number | string | undefined | null): string => {
   });
 };
 
-=======
-} from 'lucide-react';
-import { ClientTourneeItem } from '../types';
-import { androwaySyncService } from '../services/androwaySyncService';
-import { gpsTourneeService } from '../services/gpsTourneeService';
-import { vendeurAuthService } from '../services/vendeurAuthService';
-
-const INITIAL_TOURNEE: ClientTourneeItem[] = [];
-
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
 export const AndrowayTourneePage: React.FC = () => {
   const [clients, setClients] = useState<ClientTourneeItem[]>(() => {
     const saved = localStorage.getItem('androway_tournee_clients');
@@ -68,10 +57,7 @@ export const AndrowayTourneePage: React.FC = () => {
   const [pendingCount, setPendingCount] = useState(androwaySyncService.getPendingCount());
   const [isSyncing, setIsSyncing] = useState(androwaySyncService.getIsSyncing());
   const [searchQuery, setSearchQuery] = useState('');
-<<<<<<< HEAD
   const [filterType, setFilterType] = useState<'tous' | 'clients' | 'prospects'>('tous');
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
 
   // Modales
   const [sellingClient, setSellingClient] = useState<ClientTourneeItem | null>(null);
@@ -79,7 +65,6 @@ export const AndrowayTourneePage: React.FC = () => {
   const [showProspectModal, setShowProspectModal] = useState(false);
 
   // Vente rapide state
-<<<<<<< HEAD
   interface OrderArticleItem {
     id: number;
     code?: string;
@@ -94,15 +79,6 @@ export const AndrowayTourneePage: React.FC = () => {
   const [orderArticles, setOrderArticles] = useState<OrderArticleItem[]>([]);
   const [isLoadingProduits, setIsLoadingProduits] = useState(false);
   const [articleSearchQuery, setArticleSearchQuery] = useState('');
-=======
-  const [orderArticles, setOrderArticles] = useState([
-    { id: 1, designation: 'Paracétamol 500mg B/20', prix: 180, quantite: 0 },
-    { id: 2, designation: 'Amoxicilline 1g B/14', prix: 520, quantite: 0 },
-    { id: 3, designation: 'Sérum Salé 0.9% 500ml', prix: 220, quantite: 0 },
-    { id: 4, designation: 'Oméprazole 20mg B/28', prix: 890, quantite: 0 },
-    { id: 5, designation: 'Vitamine C 1000mg Eff.', prix: 450, quantite: 0 },
-  ]);
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
 
   // Encaissement state
   const [montantEncaissement, setMontantEncaissement] = useState<string>('');
@@ -173,13 +149,12 @@ export const AndrowayTourneePage: React.FC = () => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-<<<<<<< HEAD
   const chargerDonneesDepuisServeur = async () => {
     try {
       // 1. Charger les clients officiels
       let serverClients: any[] = [];
       try {
-        serverClients = await apiClient.getProspects();
+        serverClients = await apiClient.getClients();
       } catch (_) {}
 
       // 2. Charger les prospects
@@ -294,8 +269,6 @@ export const AndrowayTourneePage: React.FC = () => {
     showToast('Données, clients et catalogue actualisés avec le serveur');
   };
 
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   const visitedCount = clients.filter((c) => c.isVisited).length;
   const progressPercent = Math.round((visitedCount / clients.length) * 100);
 
@@ -305,17 +278,12 @@ export const AndrowayTourneePage: React.FC = () => {
 
     // Enqueue dans Androway Sync
     const pos = await gpsTourneeService.getCurrentPosition();
-<<<<<<< HEAD
     const isProspect = client.code.startsWith('PROSP');
     await androwaySyncService.enqueueOperation('pointageVisite', {
       clientId: client.id,
       client_id: client.id,
       prospect_id: isProspect ? client.id : null,
       is_prospect: isProspect,
-=======
-    await androwaySyncService.enqueueOperation('pointageVisite', {
-      clientId: client.id,
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
       codeClient: client.code,
       nomClient: client.nom,
       lat: pos?.latitude,
@@ -341,7 +309,6 @@ export const AndrowayTourneePage: React.FC = () => {
   // Valider Vente Terrain
   const handleValiderVente = async () => {
     if (!sellingClient) return;
-<<<<<<< HEAD
     const lignesChoisis = orderArticles
       .filter((a) => a.quantite > 0)
       .map((a) => ({
@@ -357,15 +324,11 @@ export const AndrowayTourneePage: React.FC = () => {
         montant: a.prix * a.uniteFacteur * a.quantite,
       }));
 
-=======
-    const lignesChoisis = orderArticles.filter((a) => a.quantite > 0);
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
     if (lignesChoisis.length === 0) {
       alert('Veuillez sélectionner au moins un article');
       return;
     }
 
-<<<<<<< HEAD
     const total = lignesChoisis.reduce((s, a) => s + a.montant, 0);
     const numBC = `BC-${Date.now().toString().substring(7)}`;
     const isProspect = sellingClient.code.startsWith('PROSP');
@@ -375,13 +338,6 @@ export const AndrowayTourneePage: React.FC = () => {
       client_id: isProspect ? null : sellingClient.id,
       prospect_id: isProspect ? sellingClient.id : null,
       is_prospect: isProspect,
-=======
-    const total = lignesChoisis.reduce((s, a) => s + a.prix * a.quantite, 0);
-    const numBC = `BC-${Date.now().toString().substring(7)}`;
-
-    await androwaySyncService.enqueueOperation('commande', {
-      numero: numBC,
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
       codeClient: sellingClient.code,
       nomClient: sellingClient.nom,
       totalDZD: total,
@@ -400,11 +356,7 @@ export const AndrowayTourneePage: React.FC = () => {
 
     setSellingClient(null);
     setOrderArticles((prev) => prev.map((a) => ({ ...a, quantite: 0 })));
-<<<<<<< HEAD
     showToast(`Bon de commande ${numBC} généré (${formatDZD(total)} DZD) !`);
-=======
-    showToast(`Bon de commande ${numBC} généré (${total.toLocaleString()} DZD) !`);
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   };
 
   // Valider Encaissement
@@ -417,7 +369,6 @@ export const AndrowayTourneePage: React.FC = () => {
     }
 
     const numRecu = `REG-${Date.now().toString().substring(7)}`;
-<<<<<<< HEAD
     const isProspect = paymentClient.code.startsWith('PROSP');
 
     await androwaySyncService.enqueueOperation('encaissement', {
@@ -426,11 +377,6 @@ export const AndrowayTourneePage: React.FC = () => {
       clientId: paymentClient.id,
       prospect_id: isProspect ? paymentClient.id : null,
       is_prospect: isProspect,
-=======
-
-    await androwaySyncService.enqueueOperation('encaissement', {
-      recu: numRecu,
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
       codeClient: paymentClient.code,
       nomClient: paymentClient.nom,
       montant: montantNum,
@@ -456,11 +402,7 @@ export const AndrowayTourneePage: React.FC = () => {
     setPaymentClient(null);
     setMontantEncaissement('');
     setRefReglement('');
-<<<<<<< HEAD
     showToast(`Règlement de ${formatDZD(montantNum)} DZD enregistré (${numRecu})`);
-=======
-    showToast(`Règlement de ${montantNum.toLocaleString()} DZD enregistré (${numRecu})`);
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   };
 
   // Créer Nouveau Prospect
@@ -493,17 +435,12 @@ export const AndrowayTourneePage: React.FC = () => {
       wilaya: prospectWilaya,
       lat: pos?.latitude,
       lng: pos?.longitude,
-<<<<<<< HEAD
       vendeur_id: vendeurProfile?.id || null,
     });
 
     // Déclencher une tentative de synchronisation immédiate en tâche de fond
     void androwaySyncService.syncAllPending();
 
-=======
-    });
-
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
     setClients((prev) => [newClient, ...prev]);
     setShowProspectModal(false);
     setProspectNom('');
@@ -514,7 +451,6 @@ export const AndrowayTourneePage: React.FC = () => {
 
   const filteredClients = clients.filter((c) => {
     const q = searchQuery.toLowerCase();
-<<<<<<< HEAD
     const matchesSearch =
       c.nom.toLowerCase().includes(q) ||
       c.code.toLowerCase().includes(q) ||
@@ -525,13 +461,6 @@ export const AndrowayTourneePage: React.FC = () => {
     if (filterType === 'clients') return !isProspect;
     if (filterType === 'prospects') return isProspect;
     return true;
-=======
-    return (
-      c.nom.toLowerCase().includes(q) ||
-      c.code.toLowerCase().includes(q) ||
-      c.ville.toLowerCase().includes(q)
-    );
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   });
 
   // ✅ Porte d'entrée : tant que le commercial ne s'est pas connecté avec
@@ -649,11 +578,7 @@ export const AndrowayTourneePage: React.FC = () => {
 
           <div className="flex items-center gap-3">
             <button
-<<<<<<< HEAD
               onClick={handleSyncClick}
-=======
-              onClick={() => androwaySyncService.syncAllPending()}
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
               disabled={isSyncing}
               className="inline-flex items-center gap-2 rounded-2xl bg-teal-600 px-4 py-2.5 text-xs font-bold text-white shadow-md shadow-teal-700/30 hover:bg-teal-700 disabled:opacity-50"
             >
@@ -688,21 +613,14 @@ export const AndrowayTourneePage: React.FC = () => {
         </div>
       </div>
 
-<<<<<<< HEAD
       {/* Barre de recherche et onglets de filtrage */}
       <div className="mt-6 space-y-3">
         <div className="relative">
-=======
-      {/* Barre de recherche des clients */}
-      <div className="mt-6 flex items-center justify-between gap-3">
-        <div className="relative flex-1">
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
           <Search className="absolute left-3.5 top-3 h-4 w-4 text-slate-400" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-<<<<<<< HEAD
             placeholder="Filtrer par nom, ville, code..."
             className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-xs focus:border-teal-600 focus:outline-hidden focus:ring-2 focus:ring-teal-100"
           />
@@ -743,12 +661,6 @@ export const AndrowayTourneePage: React.FC = () => {
             Prospects Vendeur ({clients.filter((c) => c.code.startsWith('PROSP')).length})
           </button>
         </div>
-=======
-            placeholder="Filtrer client, ville, référence..."
-            className="w-full rounded-2xl border border-slate-200 bg-white py-2.5 pl-10 pr-3 text-sm shadow-xs focus:border-teal-600 focus:outline-hidden focus:ring-2 focus:ring-teal-100"
-          />
-        </div>
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
       </div>
 
       {/* Liste des clients de la tournée */}
@@ -786,7 +698,6 @@ export const AndrowayTourneePage: React.FC = () => {
                       <span className="font-mono text-xs font-bold text-slate-400">
                         {client.code}
                       </span>
-<<<<<<< HEAD
                       {client.code.startsWith('PROSP') ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-bold text-purple-800 border border-purple-200">
                           🎯 Prospect Vendeur
@@ -796,8 +707,6 @@ export const AndrowayTourneePage: React.FC = () => {
                           👤 Client Admin
                         </span>
                       )}
-=======
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                       {client.isVisited ? (
                         <span className="inline-flex items-center gap-1 rounded-full bg-teal-100 px-2.5 py-0.5 text-[10px] font-bold text-teal-800">
                           <CheckCircle2 className="h-3 w-3" />
@@ -829,11 +738,7 @@ export const AndrowayTourneePage: React.FC = () => {
                               : 'font-medium text-slate-500'
                           }
                         >
-<<<<<<< HEAD
                           {formatDZD(client.creanceDZD)} DZD
-=======
-                          {client.creanceDZD.toLocaleString()} DZD
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                         </span>
                       </span>
                     </div>
@@ -844,11 +749,7 @@ export const AndrowayTourneePage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => {
-<<<<<<< HEAD
                         handleOpenVenteModal(client);
-=======
-                        setSellingClient(client);
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                       }}
                       className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-xs hover:bg-blue-700"
                     >
@@ -887,22 +788,14 @@ export const AndrowayTourneePage: React.FC = () => {
       {/* MODAL 1: Vente Terrain / Prise de Commande */}
       {sellingClient && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-<<<<<<< HEAD
           <div className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
-=======
-          <div className="w-full max-w-lg rounded-3xl bg-white p-6 shadow-2xl">
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
                   Prise de commande terrain
                 </h3>
                 <p className="text-xs text-slate-500">
-<<<<<<< HEAD
                   Client : <span className="font-semibold text-slate-800">{sellingClient.nom}</span> ({sellingClient.code})
-=======
-                  Client : <span className="font-semibold text-slate-800">{sellingClient.nom}</span>
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                 </p>
               </div>
               <button
@@ -913,7 +806,6 @@ export const AndrowayTourneePage: React.FC = () => {
               </button>
             </div>
 
-<<<<<<< HEAD
             {/* Barre de recherche et actualisation catalogue */}
             <div className="mt-3 flex items-center gap-2">
               <div className="relative flex-1">
@@ -1101,63 +993,11 @@ export const AndrowayTourneePage: React.FC = () => {
                 {formatDZD(
                   orderArticles.reduce((s, a) => s + a.prix * a.facteurConversion * a.quantite, 0)
                 )}{' '}
-=======
-            <div className="mt-4 max-h-72 space-y-2 overflow-y-auto pr-1">
-              {orderArticles.map((art, idx) => (
-                <div
-                  key={art.id}
-                  className="flex items-center justify-between rounded-xl border border-slate-200 p-2.5 text-xs"
-                >
-                  <div className="flex-1">
-                    <div className="font-semibold text-slate-900">{art.designation}</div>
-                    <div className="text-[11px] text-slate-500">{art.prix} DZD / u</div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updated = [...orderArticles];
-                        updated[idx].quantite = Math.max(0, updated[idx].quantite - 1);
-                        setOrderArticles(updated);
-                      }}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 font-bold hover:bg-slate-200"
-                    >
-                      -
-                    </button>
-                    <span className="w-6 text-center font-bold">{art.quantite}</span>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const updated = [...orderArticles];
-                        updated[idx].quantite += 1;
-                        setOrderArticles(updated);
-                      }}
-                      className="flex h-7 w-7 items-center justify-center rounded-lg bg-slate-100 font-bold hover:bg-slate-200"
-                    >
-                      +
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-3 text-sm">
-              <span className="font-semibold text-slate-600">Total Commande :</span>
-              <span className="text-lg font-black text-blue-600">
-                {orderArticles
-                  .reduce((s, a) => s + a.prix * a.quantite, 0)
-                  .toLocaleString()}{' '}
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                 DZD
               </span>
             </div>
 
-<<<<<<< HEAD
             <div className="mt-4 flex gap-2">
-=======
-            <div className="mt-5 flex gap-2">
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
               <button
                 type="button"
                 onClick={() => setSellingClient(null)}
@@ -1168,12 +1008,8 @@ export const AndrowayTourneePage: React.FC = () => {
               <button
                 type="button"
                 onClick={handleValiderVente}
-<<<<<<< HEAD
                 disabled={orderArticles.filter((a) => a.quantite > 0).length === 0}
                 className="w-2/3 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700 disabled:opacity-50"
-=======
-                className="w-2/3 rounded-xl bg-blue-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-blue-700"
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
               >
                 Valider le Bon de Commande
               </button>
@@ -1206,11 +1042,7 @@ export const AndrowayTourneePage: React.FC = () => {
                 <div className="flex justify-between text-slate-600">
                   <span>Créance actuelle :</span>
                   <span className="font-bold text-amber-700">
-<<<<<<< HEAD
                     {formatDZD(paymentClient.creanceDZD)} DZD
-=======
-                    {paymentClient.creanceDZD.toLocaleString()} DZD
->>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                   </span>
                 </div>
               </div>
