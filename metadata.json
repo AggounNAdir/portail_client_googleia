@@ -1,0 +1,10 @@
+{
+  "name": "Portail Client",
+  "description": "Application portail client pour la gestion de catalogue, commandes, tournée Androway et caisse POS",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
