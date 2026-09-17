@@ -136,6 +136,7 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
                     <span className="font-mono text-xs font-bold text-slate-400">
                       {prd.code}
                     </span>
+<<<<<<< HEAD
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span
                         className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
@@ -147,11 +148,23 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
                         {enStock ? `${prd.stockActuel} ${prd.unite || 'Pièce'} dispo` : 'Rupture'}
                       </span>
                     </div>
+=======
+                    <span
+                      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ${
+                        enStock
+                          ? 'bg-green-50 text-green-700 border border-green-200'
+                          : 'bg-red-50 text-red-700 border border-red-200'
+                      }`}
+                    >
+                      {enStock ? `${prd.stockActuel} ${prd.unite} dispo` : 'Rupture'}
+                    </span>
+>>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                   </div>
 
                   <h3 className="mt-2 text-sm font-bold text-slate-900 leading-snug">
                     {prd.designation}
                   </h3>
+<<<<<<< HEAD
 
                   {/* Badges d'information Unité & Facteur de conversion */}
                   <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
@@ -162,6 +175,8 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
                       Facteur conv. : <strong className="text-indigo-900">{prd.facteurConversion ?? 1}</strong>
                     </span>
                   </div>
+=======
+>>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                 </div>
 
                 <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
@@ -169,12 +184,17 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
                     <div className="text-base font-black text-blue-600">
                       {(prd.prixUnitaire ?? 0).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA <span className="text-xs font-normal text-slate-500">HT</span>
                     </div>
+<<<<<<< HEAD
                     <div className="text-[11px] text-slate-500">
                       Unité : <span className="font-semibold text-slate-700">{prd.unite || 'Pièce'}</span>
                       {Boolean(prd.facteurConversion && prd.facteurConversion > 1) && (
                         <span className="ml-1 text-slate-400">({prd.facteurConversion} / colis)</span>
                       )}
                       {' • TVA '}{prd.tva ?? 19}%
+=======
+                    <div className="text-[11px] text-slate-400">
+                      Unité : {prd.unite || 'U'} • TVA {prd.tva ?? 19}%
+>>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
                     </div>
                   </div>
 

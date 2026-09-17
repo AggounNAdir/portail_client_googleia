@@ -59,6 +59,7 @@ export class AndrowaySyncService {
     return this.queue.filter((op) => op.status === 'pending').length;
   }
 
+<<<<<<< HEAD
   public clearQueue(): void {
     this.queue = [];
     this.saveQueue();
@@ -69,6 +70,8 @@ export class AndrowaySyncService {
     this.saveQueue();
   }
 
+=======
+>>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
   public getIsSyncing(): boolean {
     return this.isSyncing;
   }
@@ -116,6 +119,7 @@ export class AndrowaySyncService {
 
       try {
         let endpoint = '/commandes';
+<<<<<<< HEAD
         // En tournée Androway, toutes les opérations (commandes, règlements, signatures, pointages)
         // sont exécutées par le VENDEUR avec son jeton d'authentification commercial.
         let tokenType: 'client' | 'vendeur' | 'any' = 'vendeur';
@@ -123,6 +127,16 @@ export class AndrowaySyncService {
           case 'commande':
             endpoint = '/commandes';
             tokenType = 'vendeur';
+=======
+        // ✅ 'commande' est créée au nom du CLIENT (POST /commandes exige un
+        // jeton client) ; toutes les autres opérations de tournée terrain
+        // sont créées au nom du VENDEUR connecté (jeton vendeur distinct).
+        let tokenType: 'client' | 'vendeur' = 'client';
+        switch (op.type) {
+          case 'commande':
+            endpoint = '/commandes';
+            tokenType = 'client';
+>>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
             break;
           case 'signatureBL':
             endpoint = '/ventes/bl/signature';
@@ -142,6 +156,7 @@ export class AndrowaySyncService {
             break;
         }
 
+<<<<<<< HEAD
         let bodyPayload = op.payload;
         if (op.type === 'commande') {
           const rawClientId = op.payload.client_id ?? op.payload.clientId;
@@ -189,13 +204,24 @@ export class AndrowaySyncService {
           };
         }
 
+=======
+>>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
         await apiClient.request(
           endpoint,
           {
             method: 'POST',
+<<<<<<< HEAD
             body: JSON.stringify(bodyPayload),
           },
           undefined,
+=======
+            body: JSON.stringify(op.payload),
+          },
+          () => {
+            // En mode local, on valide l'opération avec succès
+            return { status: 'synced_offline', id: op.id };
+          },
+>>>>>>> 498e5f5a23b6492ce4798e8d69b4035eb4f78f67
           tokenType
         );
 
