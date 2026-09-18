@@ -23,30 +23,44 @@ export const CartPage: React.FC<CartPageProps> = ({
   const [observations, setObservations] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successDialogCmd, setSuccessDialogCmd] = useState<CommandeOut | null>(null);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const totalHT = cart.reduce(
-    (sum, item) => sum + (item.produit?.prixUnitaire || 0) * (item.quantite || 1),
-    0
-  );
+  const totalHT = cart.reduce((sum, item) => {
+    const pu = item.produit?.prixUnitaire || 0;
+    const facteur = item.produit?.facteurConversion || 1;
+    return sum + pu * facteur * (item.quantite || 1);
+  }, 0);
   const totalArticles = cart.reduce((sum, item) => sum + (item.quantite || 0), 0);
 
   const handleSubmitOrder = async () => {
     if (cart.length === 0) return;
 
     setIsSubmitting(true);
+    setSubmitError(null);
     try {
       const created = await commandeService.creerCommande({
         observations: observations.trim() || undefined,
-        lignes: cart.map((i) => ({
-          produitId: i.produit.id,
-          quantite: i.quantite,
-        })),
+        total: totalHT,
+        montantTotal: totalHT,
+        lignes: cart.map((i) => {
+          const pu = i.produit?.prixUnitaire || 0;
+          const facteur = i.produit?.facteurConversion || 1;
+          const totalLigne = pu * facteur * (i.quantite || 1);
+          return {
+            produitId: i.produit.id,
+            quantite: i.quantite,
+            prixUnitaire: pu,
+            facteurConversion: facteur,
+            unite: i.produit.unite,
+            total: totalLigne,
+          };
+        }),
       });
 
       onClearCart();
       setSuccessDialogCmd(created);
     } catch (err: any) {
-      alert(err.message || 'Erreur lors de la validation de la commande');
+      setSubmitError(err.message || 'Erreur lors de la validation de la commande');
     } finally {
       setIsSubmitting(false);
     }
@@ -97,12 +111,14 @@ export const CartPage: React.FC<CartPageProps> = ({
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
           {/* Liste des articles */}
           <div className="space-y-3 lg:col-span-2">
-            {cart.map((item) => {
-              const itemTotal = item.produit.prixUnitaire * item.quantite;
+            {cart.map((item, idx) => {
+              const pu = item.produit?.prixUnitaire || 0;
+              const facteur = item.produit?.facteurConversion || 1;
+              const itemTotal = pu * facteur * item.quantite;
 
               return (
                 <div
-                  key={item.produit.id}
+                  key={`cart-item-${item.produit.id}-${item.produit.code || ''}-${idx}`}
                   className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center"
                 >
                   <div className="flex-1">
@@ -111,14 +127,26 @@ export const CartPage: React.FC<CartPageProps> = ({
                         {item.produit.code}
                       </span>
                       <span className="text-[11px] text-slate-400">
-                        ({item.produit.unite})
+                        ({item.produit.unite || 'Pièce'})
                       </span>
+                      {facteur > 1 && (
+                        <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                          Colisage : x{facteur}
+                        </span>
+                      )}
                     </div>
                     <div className="text-sm font-bold text-slate-900 leading-snug">
                       {item.produit.designation}
                     </div>
-                    <div className="mt-1 text-xs font-semibold text-blue-600">
-                      {(item.produit?.prixUnitaire || 0).toFixed(2)} € HT
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                      <span className="font-semibold text-blue-600">
+                        {pu.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA HT
+                      </span>
+                      {facteur > 1 && (
+                        <span className="text-[11px] text-slate-500">
+                          ({(pu * facteur).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA / colis)
+                        </span>
+                      )}
                     </div>
                   </div>
 
@@ -145,8 +173,13 @@ export const CartPage: React.FC<CartPageProps> = ({
 
                     <div className="text-right">
                       <div className="text-sm font-black text-slate-900">
-                        {((item.produit?.prixUnitaire || 0) * item.quantite).toFixed(2)} €
+                        {itemTotal.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
                       </div>
+                      {facteur > 1 && (
+                        <div className="text-[10px] text-slate-400">
+                          {item.quantite} × {facteur} = {item.quantite * facteur} unités
+                        </div>
+                      )}
                     </div>
 
                     <button
@@ -188,22 +221,32 @@ export const CartPage: React.FC<CartPageProps> = ({
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>Sous-total HT</span>
-                  <span className="font-semibold text-slate-900">{totalHT.toFixed(2)} €</span>
+                  <span className="font-semibold text-slate-900">
+                    {totalHT.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
+                  </span>
                 </div>
                 <div className="flex justify-between text-slate-600">
                   <span>TVA estimée (19%)</span>
-                  <span className="font-semibold text-slate-900">{(totalHT * 0.19).toFixed(2)} €</span>
+                  <span className="font-semibold text-slate-900">
+                    {(totalHT * 0.19).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
+                  </span>
                 </div>
 
                 <div className="border-t border-slate-100 pt-3">
                   <div className="flex items-baseline justify-between">
                     <span className="text-sm font-bold text-slate-900">Total TTC estimé</span>
                     <span className="text-lg font-black text-blue-600">
-                      {(totalHT * 1.19).toFixed(2)} €
+                      {(totalHT * 1.19).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
                     </span>
                   </div>
                 </div>
               </div>
+
+              {submitError && (
+                <div className="mt-3 rounded-xl bg-red-50 p-2.5 text-xs text-red-700">
+                  {submitError}
+                </div>
+              )}
 
               <button
                 type="button"
@@ -249,7 +292,7 @@ export const CartPage: React.FC<CartPageProps> = ({
               </div>
               <div className="flex justify-between py-1">
                 <span className="text-slate-500">Montant HT :</span>
-                <span className="font-bold text-blue-600">{successDialogCmd.totalEstime.toFixed(2)} €</span>
+                <span className="font-bold text-blue-600">{(successDialogCmd.totalEstime ?? 0).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA</span>
               </div>
             </div>
 

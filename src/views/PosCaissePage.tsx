@@ -131,9 +131,9 @@ export const PosCaissePage: React.FC = () => {
 
         {produitsCatalogue.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {produitsCatalogue.map((art) => (
+            {produitsCatalogue.map((art, idx) => (
               <button
-                key={art.id}
+                key={`pos-art-${art.id}-${art.code || ''}-${idx}`}
                 type="button"
                 onClick={() => handleAjouterArticle(art.designation, art.prixUnitaire, art.code)}
                 className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-blue-300 hover:bg-blue-50"
@@ -163,7 +163,7 @@ export const PosCaissePage: React.FC = () => {
           <div className="divide-y divide-slate-100">
             {panier.map((item, i) => (
               <div
-                key={item.id}
+                key={`pos-panier-item-${item.id}-${i}`}
                 className="flex items-center justify-between py-3 text-xs sm:text-sm"
               >
                 <div className="flex-1 pr-2">

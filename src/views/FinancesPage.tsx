@@ -99,9 +99,9 @@ export const FinancesPage: React.FC = () => {
               Aucune facture répertoriée
             </div>
           ) : (
-            factures.map((fac) => (
+            factures.map((fac, idx) => (
               <div
-                key={fac.id}
+                key={`fac-${fac.id}-${fac.numero || ''}-${idx}`}
                 className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center"
               >
                 <div>
@@ -141,9 +141,9 @@ export const FinancesPage: React.FC = () => {
               Aucun versement enregistré
             </div>
           ) : (
-            versements.map((vers) => (
+            versements.map((vers, idx) => (
               <div
-                key={vers.id}
+                key={`vers-${vers.id}-${vers.numero || ''}-${idx}`}
                 className="flex flex-col justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-xs sm:flex-row sm:items-center"
               >
                 <div>
@@ -176,9 +176,9 @@ export const FinancesPage: React.FC = () => {
               Aucun bon de vente
             </div>
           ) : (
-            ventes.map((bv) => (
+            ventes.map((bv, idx) => (
               <div
-                key={bv.id}
+                key={`bv-${bv.id}-${bv.numero || ''}-${idx}`}
                 className="rounded-2xl border border-slate-200 bg-white p-4 shadow-xs"
               >
                 <div className="flex items-center justify-between">
@@ -191,8 +191,8 @@ export const FinancesPage: React.FC = () => {
                 </div>
                 <div className="text-[11px] text-slate-400">Date : {bv.dateBon}</div>
                 <div className="mt-2 text-xs text-slate-600">
-                  {(bv.lignes || []).map((l) => (
-                    <div key={l.id} className="flex justify-between py-0.5">
+                  {(bv.lignes || []).map((l, lIdx) => (
+                    <div key={`bv-l-${bv.id}-${l.id}-${lIdx}`} className="flex justify-between py-0.5">
                       <span>• {l.designation} (x{l.quantite})</span>
                       <span className="font-medium">{(l.montant ?? 0).toFixed(2)} DA</span>
                     </div>

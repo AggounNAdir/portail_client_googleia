@@ -20,10 +20,16 @@ export interface CartItem {
 export interface CommandeLigneIn {
   produitId: number;
   quantite: number;
+  prixUnitaire?: number;
+  facteurConversion?: number;
+  unite?: string;
+  total?: number;
 }
 
 export interface CommandeIn {
   observations?: string | null;
+  total?: number;
+  montantTotal?: number;
   lignes: CommandeLigneIn[];
 }
 
@@ -118,6 +124,7 @@ export interface SyncOperation {
   createdAt: string;
   status: SyncStatus;
   retryCount: number;
+  errorReason?: string;
 }
 
 export interface ClientTourneeItem {

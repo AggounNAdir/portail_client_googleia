@@ -65,9 +65,16 @@ export class CommandeService {
         body: JSON.stringify({
           code_client: codeClient || undefined,
           observations: commande.observations || null,
+          montant_total: commande.montantTotal || commande.total,
+          total: commande.total || commande.montantTotal,
           lignes: commande.lignes.map((l) => ({
             produit_id: l.produitId,
             quantite: l.quantite,
+            prix_unitaire: l.prixUnitaire,
+            prix: l.prixUnitaire,
+            facteur_conversion: l.facteurConversion || 1,
+            unite: l.unite,
+            total: l.total,
           })),
         }),
       },

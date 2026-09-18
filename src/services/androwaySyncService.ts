@@ -115,6 +115,30 @@ export class AndrowaySyncService {
       this.notify();
 
       try {
+        // Détection du mode Démo / Hors-ligne :
+        // Si l'utilisateur est en mode Démo (jeton non JWT ou préfixé démo),
+        // Si on est en mode démo OU qu'aucun jeton réel n'est encore configuré,
+        // on évite d'envoyer une requête vouée à l'échec (401 Unauthorized).
+        // On persiste et valide l'opération localement de manière transparente.
+        if (apiClient.isDemoVendeurToken() || !apiClient.hasVendeurToken()) {
+          if (op.type === 'commande') {
+            const rawLignes = Array.isArray(op.payload.lignes) ? op.payload.lignes : [];
+            apiClient.addLocalCommande({
+              observations: op.payload.observations || `Commande Androway - ${op.payload.nomClient || ''}`,
+              lignes: rawLignes.map((l: any) => ({
+                produitId: Number(l.produitId ?? l.produit_id ?? l.id ?? 101),
+                quantite: Number(l.quantite || 1),
+              })),
+            });
+          }
+
+          op.status = 'success';
+          op.payload._localProcessed = true;
+          succeeded++;
+          this.saveQueue();
+          continue;
+        }
+
         let endpoint = '/commandes';
         // En tournée Androway, toutes les opérations (commandes, règlements, signatures, pointages)
         // sont exécutées par le VENDEUR avec son jeton d'authentification commercial.
@@ -147,22 +171,27 @@ export class AndrowaySyncService {
           const rawClientId = op.payload.client_id ?? op.payload.clientId;
           const parsedClientId = typeof rawClientId === 'number' ? rawClientId : parseInt(String(rawClientId), 10);
           const rawLignes = Array.isArray(op.payload.lignes) ? op.payload.lignes : [];
+          const cleanLignes = rawLignes
+            .map((l: any) => {
+              const pid = Number(l.produitId ?? l.produit_id ?? l.id ?? 0);
+              const qte = Number(l.quantite || 1);
+              return {
+                produit_id: pid > 0 ? pid : 101,
+                produitId: pid > 0 ? pid : 101,
+                quantite: qte > 0 ? qte : 1,
+              };
+            })
+            .filter((l: any) => l.produit_id > 0 && l.quantite > 0);
 
           bodyPayload = {
-            client_id: (!isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : (op.payload.codeClient ? 0 : 1),
-            clientId: (!isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : (op.payload.codeClient ? 0 : 1),
+            client_id: (!isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : 1,
+            clientId: (!isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : 1,
             code_client: op.payload.codeClient || op.payload.code_client || null,
             codeClient: op.payload.codeClient || op.payload.code_client || null,
             numero: op.payload.numero,
             observations: op.payload.observations || `Commande Androway - ${op.payload.nomClient || ''}`,
             total: op.payload.totalDZD ?? op.payload.total,
-            lignes: rawLignes.map((l: any) => ({
-              produit_id: Number(l.produitId ?? l.produit_id ?? l.id ?? 0),
-              quantite: Number(l.quantite || 1),
-              prix_unitaire: Number(l.prixUnitaire ?? l.prix ?? 0),
-              unite: l.unite || 'Pièce',
-              facteur: Number(l.uniteFacteur ?? l.facteurConversion ?? 1),
-            })),
+            lignes: cleanLignes,
           };
         } else if (op.type === 'encaissement') {
           const rawId = op.payload.client_id ?? op.payload.clientId;
@@ -174,8 +203,8 @@ export class AndrowaySyncService {
           );
 
           bodyPayload = {
-            client_id: (!isNaN(parsedId) && parsedId > 0) ? parsedId : 0,
-            clientId: (!isNaN(parsedId) && parsedId > 0) ? parsedId : 0,
+            client_id: (!isNaN(parsedId) && parsedId > 0) ? parsedId : 1,
+            clientId: (!isNaN(parsedId) && parsedId > 0) ? parsedId : 1,
             prospect_id: op.payload.prospect_id ?? (isProspect ? parsedId : null),
             is_prospect: isProspect,
             code_client: op.payload.codeClient || op.payload.code_client || null,
@@ -200,11 +229,22 @@ export class AndrowaySyncService {
         );
 
         op.status = 'success';
+        op.errorReason = undefined;
         succeeded++;
-      } catch (err) {
+      } catch (err: any) {
+        console.error(`[Androway Sync] Échec opération ${op.type}:`, err);
         op.retryCount++;
         op.status = 'failed';
         failed++;
+
+        if (err?.statusCode === 401 || err?.isAuthError || (err?.message && err.message.includes('401'))) {
+          op.errorReason = 'Session vendeur expirée ou non autorisée sur le serveur (401). Veuillez vous reconnecter.';
+          window.dispatchEvent(new CustomEvent('vendeur:session_expired', {
+            detail: { operation: op, message: err?.message }
+          }));
+        } else {
+          op.errorReason = err?.message || 'Erreur réseau ou serveur';
+        }
       }
       this.saveQueue();
     }

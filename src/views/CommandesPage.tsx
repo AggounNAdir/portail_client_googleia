@@ -65,12 +65,12 @@ export const CommandesPage: React.FC = () => {
         </div>
       ) : (
         <div className="space-y-3">
-          {commandes.map((cmd) => {
+          {commandes.map((cmd, cmdIdx) => {
             const isExpanded = expandedId === cmd.id;
 
             return (
               <div
-                key={cmd.id}
+                key={`cmd-item-${cmd.id}-${cmd.numero || ''}-${cmdIdx}`}
                 className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xs transition-shadow hover:shadow-sm"
               >
                 <div
@@ -133,8 +133,8 @@ export const CommandesPage: React.FC = () => {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {(cmd.lignes || []).map((l) => (
-                            <tr key={l.id} className="hover:bg-slate-50/50">
+                          {(cmd.lignes || []).map((l, lIdx) => (
+                            <tr key={`cmd-ligne-${cmd.id}-${l.id}-${lIdx}`} className="hover:bg-slate-50/50">
                               <td className="p-2.5 font-mono text-slate-500">{l.code}</td>
                               <td className="p-2.5 font-medium text-slate-800">{l.designation}</td>
                               <td className="p-2.5 text-center font-bold text-slate-900">{l.quantite}</td>

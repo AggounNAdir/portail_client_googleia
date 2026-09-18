@@ -43,12 +43,9 @@ export const AndrowayTourneePage: React.FC = () => {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        // Purge anciennes données démo de tournée
-        if (Array.isArray(parsed) && parsed.some((c: any) => c.code === 'CLT-0012')) {
-          localStorage.removeItem('androway_tournee_clients');
-          return [];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed;
         }
-        return parsed;
       } catch (_) {}
     }
     return INITIAL_TOURNEE;
@@ -105,10 +102,32 @@ export const AndrowayTourneePage: React.FC = () => {
   const [vendeurLoginLoading, setVendeurLoginLoading] = useState(false);
   const vendeurProfile = vendeurAuthService.getCachedVendeur();
 
+  // États session expirée (401) et modal de reconnexion rapide
+  const [sessionExpired, setSessionExpired] = useState<boolean>(false);
+  const [showReloginModal, setShowReloginModal] = useState<boolean>(false);
+  const [reloginCode, setReloginCode] = useState<string>('');
+  const [reloginPassword, setReloginPassword] = useState<string>('');
+  const [reloginError, setReloginError] = useState<string | null>(null);
+  const [reloginLoading, setReloginLoading] = useState<boolean>(false);
+
+  const isDemoMode = apiClient.isDemoVendeurToken();
+
   useEffect(() => {
-    const handleVendeurUnauthorized = () => setVendeurAuthed(false);
+    const handleVendeurUnauthorized = () => {
+      setVendeurAuthed(false);
+      setSessionExpired(true);
+    };
+    const handleSessionExpired = () => {
+      setSessionExpired(true);
+      setShowReloginModal(true);
+    };
+
     window.addEventListener('vendeur:unauthorized', handleVendeurUnauthorized);
-    return () => window.removeEventListener('vendeur:unauthorized', handleVendeurUnauthorized);
+    window.addEventListener('vendeur:session_expired', handleSessionExpired);
+    return () => {
+      window.removeEventListener('vendeur:unauthorized', handleVendeurUnauthorized);
+      window.removeEventListener('vendeur:session_expired', handleSessionExpired);
+    };
   }, []);
 
   const handleVendeurLogin = async (e: React.FormEvent) => {
@@ -119,6 +138,7 @@ export const AndrowayTourneePage: React.FC = () => {
     try {
       await vendeurAuthService.login(vendeurCode.trim(), vendeurPassword);
       setVendeurAuthed(true);
+      setSessionExpired(false);
       setVendeurPassword('');
     } catch (err: any) {
       setVendeurLoginError(err?.message || 'Code vendeur ou mot de passe incorrect.');
@@ -127,9 +147,33 @@ export const AndrowayTourneePage: React.FC = () => {
     }
   };
 
+  const handleQuickRelogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const code = reloginCode.trim() || vendeurProfile?.code || 'VND-0001';
+    if (!reloginPassword) return;
+    setReloginError(null);
+    setReloginLoading(true);
+    try {
+      await vendeurAuthService.login(code, reloginPassword);
+      setVendeurAuthed(true);
+      setSessionExpired(false);
+      setShowReloginModal(false);
+      setReloginPassword('');
+      showToast(`Session renouvelée avec succès pour ${code}`);
+      if (androwaySyncService.getPendingCount() > 0) {
+        androwaySyncService.syncAllPending();
+      }
+    } catch (err: any) {
+      setReloginError(err?.message || 'Mot de passe incorrect ou compte inactif sur le serveur.');
+    } finally {
+      setReloginLoading(false);
+    }
+  };
+
   const handleVendeurLogout = async () => {
     await vendeurAuthService.logout();
     setVendeurAuthed(false);
+    setSessionExpired(false);
   };
 
   useEffect(() => {
@@ -166,21 +210,28 @@ export const AndrowayTourneePage: React.FC = () => {
       setClients((prev) => {
         const clientMap = new Map<string, ClientTourneeItem>();
 
-        // Ajouter les clients existants dans l'état local d'abord
-        prev.forEach((c) => clientMap.set(c.nom.toLowerCase().trim(), c));
+        // Ajouter les clients existants dans l'état local d'abord avec clé normalisée
+        prev.forEach((c, idx) => {
+          const key = (c.code || `clt-${c.id || idx}`).toLowerCase().trim();
+          clientMap.set(key, c);
+        });
 
         // Injecter / Mettre à jour avec les clients officiels de la base SQLite
         if (Array.isArray(serverClients)) {
-          serverClients.forEach((sc) => {
+          serverClients.forEach((sc, idx) => {
+            const scCode = sc.code || `CLT-${String(sc.id || idx + 1).padStart(4, '0')}`;
+            const key = scCode.toLowerCase().trim();
             const nomKey = (sc.nom || '').toLowerCase().trim();
-            const existing = clientMap.get(nomKey);
-            clientMap.set(nomKey, {
-              id: sc.id,
-              code: sc.code || `CLT-${String(sc.id).padStart(4, '0')}`,
-              nom: sc.nom || 'Client',
+            const existing = clientMap.get(key) || Array.from(clientMap.values()).find(
+              (c) => (c.nom || '').toLowerCase().trim() === nomKey
+            );
+            clientMap.set(key, {
+              id: sc.id ?? idx + 1,
+              code: scCode,
+              nom: sc.nom || existing?.nom || 'Client',
               adresse: sc.adresse || existing?.adresse || 'Adresse',
               ville: sc.ville || sc.wilaya || existing?.ville || 'Algérie',
-              creanceDZD: Number(sc.solde || sc.creanceDZD || 0),
+              creanceDZD: Number(sc.solde ?? sc.creanceDZD ?? 0),
               lat: Number(sc.lat || existing?.lat || 36.75),
               lng: Number(sc.lng || existing?.lng || 3.05),
               isVisited: existing ? existing.isVisited : false,
@@ -189,25 +240,29 @@ export const AndrowayTourneePage: React.FC = () => {
           });
         }
 
-        // Injecter les prospects non-convertis s'ils ne sont pas déjà en client officiel
+        // Injecter les prospects non-convertis
         if (Array.isArray(serverProspects)) {
-          serverProspects.forEach((sp) => {
+          serverProspects.forEach((sp, idx) => {
+            const pCode = sp.code || `PROSP-${String(sp.id || idx + 1).padStart(3, '0')}`;
+            const key = pCode.toLowerCase().trim();
             const nomKey = (sp.nom || sp.nom_prospect || '').toLowerCase().trim();
-            // Si le prospect n'a pas encore été converti en client officiel
-            if (!clientMap.has(nomKey)) {
-              const pCode = sp.code || `PROSP-${String(sp.id).padStart(3, '0')}`;
-              clientMap.set(nomKey, {
-                id: sp.id,
-                code: pCode,
-                nom: sp.nom || sp.nom_prospect || 'Prospect',
-                adresse: sp.adresse || 'Adresse',
-                ville: sp.wilaya || sp.ville || 'Algérie',
-                creanceDZD: Number(sp.solde || sp.creanceDZD || 0),
-                lat: Number(sp.lat || 36.75),
-                lng: Number(sp.lng || 3.05),
-                isVisited: false,
-              });
-            }
+            const existing = clientMap.get(key) || Array.from(clientMap.values()).find(
+              (c) => (c.nom || '').toLowerCase().trim() === nomKey
+            );
+            // Assurer un ID distinct pour éviter tout conflit de clé
+            const pId = sp.id ? Number(sp.id) + 10000 : 10000 + idx;
+            clientMap.set(key, {
+              id: existing?.id || pId,
+              code: pCode,
+              nom: sp.nom || sp.nom_prospect || existing?.nom || 'Prospect',
+              adresse: sp.adresse || existing?.adresse || 'Adresse',
+              ville: sp.wilaya || sp.ville || existing?.ville || 'Algérie',
+              creanceDZD: Number(sp.solde ?? sp.creanceDZD ?? 0),
+              lat: Number(sp.lat || existing?.lat || 36.75),
+              lng: Number(sp.lng || existing?.lng || 3.05),
+              isVisited: existing ? existing.isVisited : false,
+              visitedAt: existing?.visitedAt,
+            });
           });
         }
 
@@ -227,7 +282,15 @@ export const AndrowayTourneePage: React.FC = () => {
           if (p.quantite > 0) prevQuantites.set(p.id, p.quantite);
         });
 
-        return items.map((p) => ({
+        // Dédupliquer les articles par ID pour éviter les doublons de clés dans la liste
+        const seenArtIds = new Set<number>();
+        const uniqueItems = items.filter((p) => {
+          if (seenArtIds.has(p.id)) return false;
+          seenArtIds.add(p.id);
+          return true;
+        });
+
+        return uniqueItems.map((p) => ({
           id: p.id,
           code: p.code,
           designation: p.designation,
@@ -270,7 +333,7 @@ export const AndrowayTourneePage: React.FC = () => {
   };
 
   const visitedCount = clients.filter((c) => c.isVisited).length;
-  const progressPercent = Math.round((visitedCount / clients.length) * 100);
+  const progressPercent = clients.length > 0 ? Math.round((visitedCount / clients.length) * 100) : 0;
 
   // Pointer GPS
   const handlePointerGps = async (client: ClientTourneeItem) => {
@@ -356,7 +419,11 @@ export const AndrowayTourneePage: React.FC = () => {
 
     setSellingClient(null);
     setOrderArticles((prev) => prev.map((a) => ({ ...a, quantite: 0 })));
-    showToast(`Bon de commande ${numBC} généré (${formatDZD(total)} DZD) !`);
+    if (isDemoMode) {
+      showToast(`Bon de commande ${numBC} généré (${formatDZD(total)} DZD) [Mode Démo Local - Hors-ligne]`);
+    } else {
+      showToast(`Bon de commande ${numBC} généré (${formatDZD(total)} DZD) — Synchro serveur en cours`);
+    }
   };
 
   // Valider Encaissement
@@ -364,7 +431,7 @@ export const AndrowayTourneePage: React.FC = () => {
     if (!paymentClient) return;
     const montantNum = parseFloat(montantEncaissement);
     if (isNaN(montantNum) || montantNum <= 0) {
-      alert('Veuillez saisir un montant valide');
+      showToast('Veuillez saisir un montant valide supérieur à 0 DZD');
       return;
     }
 
@@ -566,14 +633,41 @@ export const AndrowayTourneePage: React.FC = () => {
             <p className="text-xs text-slate-400">
               Vente nomade, encaissement de créances et pointage GPS en mode déconnecté
             </p>
-            <button
-              type="button"
-              onClick={handleVendeurLogout}
-              className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-slate-400 hover:text-white"
-            >
-              <LogOut className="h-3 w-3" />
-              Connecté : {vendeurProfile?.nom || vendeurProfile?.code || 'Commercial'} — Déconnexion
-            </button>
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {isDemoMode ? (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
+                  <Sparkles className="h-3 w-3 text-amber-400" />
+                  Mode Démo (Hors-ligne)
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Serveur Connecté ({vendeurProfile?.code || 'VND'})
+                </span>
+              )}
+
+              {isDemoMode && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setReloginCode(vendeurProfile?.code || 'VND-0001');
+                    setShowReloginModal(true);
+                  }}
+                  className="rounded-full bg-teal-600/80 px-3 py-1 text-[11px] font-bold text-white hover:bg-teal-600 transition"
+                >
+                  Se connecter au serveur
+                </button>
+              )}
+
+              <button
+                type="button"
+                onClick={handleVendeurLogout}
+                className="inline-flex items-center gap-1 rounded-full bg-white/5 px-2.5 py-1 text-[11px] font-semibold text-slate-400 hover:text-white hover:bg-white/10 transition"
+              >
+                <LogOut className="h-3 w-3" />
+                Déconnexion
+              </button>
+            </div>
           </div>
 
           <div className="flex items-center gap-3">
@@ -612,6 +706,31 @@ export const AndrowayTourneePage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Alerte Session Expirée (401) */}
+      {sessionExpired && (
+        <div className="mt-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 rounded-3xl border border-red-500/30 bg-red-950/80 p-4 text-xs text-red-100 shadow-xl backdrop-blur-md">
+          <div className="flex items-center gap-3">
+            <AlertCircle className="h-5 w-5 text-red-400 shrink-0" />
+            <div>
+              <p className="font-bold text-red-200 text-sm">Session commerciale expirée ou non autorisée (401)</p>
+              <p className="text-red-300/80 text-xs mt-0.5">
+                Le serveur FastAPI a refusé la requête (jeton absent, expiré ou mot de passe non défini). Vos commandes restent enregistrées localement en sécurité.
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setReloginCode(vendeurProfile?.code || 'VND-0001');
+              setShowReloginModal(true);
+            }}
+            className="shrink-0 rounded-2xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-500 shadow-md transition"
+          >
+            Renouveler ma connexion
+          </button>
+        </div>
+      )}
 
       {/* Barre de recherche et onglets de filtrage */}
       <div className="mt-6 space-y-3">
@@ -684,10 +803,10 @@ export const AndrowayTourneePage: React.FC = () => {
         </div>
       ) : (
         <div className="mt-4 space-y-3">
-          {filteredClients.map((client) => {
+          {filteredClients.map((client, index) => {
             return (
               <div
-                key={client.id}
+                key={`${client.code || 'clt'}-${client.id}-${index}`}
                 className={`rounded-2xl border bg-white p-4 shadow-xs transition-all ${
                   client.isVisited ? 'border-teal-200 bg-teal-50/20' : 'border-slate-200'
                 }`}
@@ -883,11 +1002,11 @@ export const AndrowayTourneePage: React.FC = () => {
                       (art.code && art.code.toLowerCase().includes(q))
                     );
                   })
-                  .map((art) => {
+                  .map((art, artIdx) => {
                     const originalIdx = orderArticles.findIndex((a) => a.id === art.id);
                     return (
                       <div
-                        key={art.id}
+                        key={`${art.code || 'art'}-${art.id}-${artIdx}`}
                         className={`flex items-center justify-between rounded-xl border p-2.5 text-xs transition-colors ${
                           art.quantite > 0
                             ? 'border-blue-300 bg-blue-50/40'
@@ -1204,6 +1323,94 @@ export const AndrowayTourneePage: React.FC = () => {
                   className="w-2/3 rounded-xl bg-teal-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-teal-700"
                 >
                   Créer & Ajouter à la tournée
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Reconnexion Vendeur Rapide (en cas de 401 ou pour basculer de Démo à Serveur Réel) */}
+      {showReloginModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Lock className="h-5 w-5 text-teal-600" />
+                <h3 className="text-base font-bold text-slate-900">
+                  Connexion Vendeur FastAPI
+                </h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowReloginModal(false);
+                  setReloginError(null);
+                }}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-slate-500">
+              Saisissez vos identifiants commerciaux pour générer un jeton d'authentification valide auprès du serveur backend.
+            </p>
+
+            <form onSubmit={handleQuickRelogin} className="mt-4 space-y-3">
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Code Vendeur
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={reloginCode}
+                  onChange={(e) => setReloginCode(e.target.value)}
+                  placeholder="Ex: VND-0001"
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-teal-600 focus:outline-hidden"
+                />
+              </div>
+
+              <div>
+                <label className="mb-1 block text-xs font-semibold text-slate-700">
+                  Mot de passe
+                </label>
+                <input
+                  type="password"
+                  required
+                  autoFocus
+                  value={reloginPassword}
+                  onChange={(e) => setReloginPassword(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full rounded-xl border border-slate-300 p-2.5 text-xs text-slate-900 focus:border-teal-600 focus:outline-hidden"
+                />
+              </div>
+
+              {reloginError && (
+                <div className="flex items-center gap-2 rounded-xl bg-red-50 p-2.5 text-xs font-semibold text-red-600">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  {reloginError}
+                </div>
+              )}
+
+              <div className="mt-5 flex gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowReloginModal(false);
+                    setReloginError(null);
+                  }}
+                  className="w-1/3 rounded-xl border border-slate-200 py-2.5 text-xs font-semibold text-slate-600 hover:bg-slate-100"
+                >
+                  Annuler
+                </button>
+                <button
+                  type="submit"
+                  disabled={reloginLoading}
+                  className="w-2/3 rounded-xl bg-teal-600 py-2.5 text-xs font-bold text-white shadow-md hover:bg-teal-700 disabled:opacity-50"
+                >
+                  {reloginLoading ? 'Connexion…' : 'Valider & Synchroniser'}
                 </button>
               </div>
             </form>

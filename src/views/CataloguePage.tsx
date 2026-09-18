@@ -123,12 +123,12 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {produits.map((prd) => {
+          {produits.map((prd, idx) => {
             const enStock = prd.stockActuel > 0;
 
             return (
               <div
-                key={prd.id}
+                key={`cat-prd-${prd.id}-${prd.code || ''}-${idx}`}
                 className="flex flex-col justify-between rounded-2xl border border-slate-200 bg-white p-5 shadow-xs transition-shadow hover:shadow-md"
               >
                 <div>
