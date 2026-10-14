@@ -128,20 +128,45 @@ export const CommandesPage: React.FC = () => {
                             <th className="p-2.5">Réf</th>
                             <th className="p-2.5">Désignation</th>
                             <th className="p-2.5 text-center">Qté</th>
+                            <th className="p-2.5 text-center">Facteur Conv.</th>
                             <th className="p-2.5 text-right">P.U. Est.</th>
                             <th className="p-2.5 text-right">Total HT</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100">
-                          {(cmd.lignes || []).map((l, lIdx) => (
-                            <tr key={`cmd-ligne-${cmd.id}-${l.id}-${lIdx}`} className="hover:bg-slate-50/50">
-                              <td className="p-2.5 font-mono text-slate-500">{l.code}</td>
-                              <td className="p-2.5 font-medium text-slate-800">{l.designation}</td>
-                              <td className="p-2.5 text-center font-bold text-slate-900">{l.quantite}</td>
-                              <td className="p-2.5 text-right text-slate-600">{(l.prixUnitaireEstime ?? 0).toFixed(2)} DA</td>
-                              <td className="p-2.5 text-right font-bold text-blue-600">{(l.totalEstime ?? 0).toFixed(2)} DA</td>
-                            </tr>
-                          ))}
+                          {(cmd.lignes || []).map((l, lIdx) => {
+                            const fc = l.facteurConversion || 1;
+                            return (
+                              <tr key={`cmd-ligne-${cmd.id}-${l.id}-${lIdx}`} className="hover:bg-slate-50/50">
+                                <td className="p-2.5 font-mono text-slate-500">{l.code}</td>
+                                <td className="p-2.5 font-medium text-slate-800">
+                                  <div>{l.designation}</div>
+                                  {fc > 1 && (
+                                    <div className="text-[10px] text-slate-400">
+                                      {l.quantite} colis × {fc} = {l.quantite * fc} {l.unite || 'unités'}
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-2.5 text-center font-bold text-slate-900">
+                                  {l.quantite} {fc > 1 ? <span className="text-[10px] font-normal text-slate-500">colis</span> : null}
+                                </td>
+                                <td className="p-2.5 text-center">
+                                  <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
+                                    x{fc} {l.unite ? `(${l.unite})` : ''}
+                                  </span>
+                                </td>
+                                <td className="p-2.5 text-right text-slate-600">
+                                  <div>{(l.prixUnitaireEstime ?? 0).toFixed(2)} DA</div>
+                                  {fc > 1 && (
+                                    <div className="text-[10px] text-indigo-600">
+                                      {((l.prixUnitaireEstime ?? 0) * fc).toFixed(2)} DA/colis
+                                    </div>
+                                  )}
+                                </td>
+                                <td className="p-2.5 text-right font-bold text-blue-600">{(l.totalEstime ?? 0).toFixed(2)} DA</td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>

@@ -8,6 +8,9 @@ export interface ReceiptData {
     quantite: number;
     prix: number;
     total: number;
+    facteurConversion?: number;
+    unite?: string;
+    modeVente?: 'colis' | 'piece';
   }>;
   totalHT: number;
   tva: number;
@@ -59,9 +62,13 @@ export class PosThermalPrinterService {
     // Tableau des articles
     addText('Article                     Qte x PU     Total DA\n');
     for (const art of data.articles) {
+      const fc = art.modeVente === 'piece' ? 1 : (art.facteurConversion && art.facteurConversion > 1 ? art.facteurConversion : 1);
       const des = (art.designation + '                        ')
         .substring(0, 24);
-      const qtePu = (`${art.quantite}x${art.prix.toFixed(0)}` + '            ')
+      const qteLabel = fc > 1 
+        ? `${art.quantite}ct(x${fc})` 
+        : `${art.quantite}x${art.prix.toFixed(0)}`;
+      const qtePu = (qteLabel + '            ')
         .substring(0, 12);
       const total = art.total.toFixed(2).padStart(10, ' ');
       addText(`${des} ${qtePu} ${total}\n`);

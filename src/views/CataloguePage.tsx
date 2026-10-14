@@ -47,8 +47,14 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
   const handleAdd = (prd: ProduitCatalogue) => {
     if (onAddToCart) {
       onAddToCart(prd, 1);
-      setAddedNotice(`Ajouté au panier : ${prd.designation}`);
-      setTimeout(() => setAddedNotice(null), 2000);
+      const fc = prd.facteurConversion || (prd as any).facteur_conversion || 1;
+      const pu = prd.prixUnitaire || (prd as any).prix_unitaire || 0;
+      if (fc > 1) {
+        setAddedNotice(`Ajouté au panier : 1 colis de ${prd.designation} (${(pu * fc).toFixed(2)} DA)`);
+      } else {
+        setAddedNotice(`Ajouté au panier : ${prd.designation} (${pu.toFixed(2)} DA)`);
+      }
+      setTimeout(() => setAddedNotice(null), 2500);
     }
   };
 
@@ -164,35 +170,58 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
                   </div>
                 </div>
 
-                <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
-                  <div>
-                    <div className="text-base font-black text-blue-600">
-                      {(prd.prixUnitaire ?? 0).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA <span className="text-xs font-normal text-slate-500">HT</span>
-                    </div>
-                    <div className="text-[11px] text-slate-500">
-                      Unité : <span className="font-semibold text-slate-700">{prd.unite || 'Pièce'}</span>
-                      {Boolean(prd.facteurConversion && prd.facteurConversion > 1) && (
-                        <span className="ml-1 text-slate-400">({prd.facteurConversion} / colis)</span>
-                      )}
-                      {' • TVA '}{prd.tva ?? 19}%
-                    </div>
-                  </div>
+                {(() => {
+                  const fc = prd.facteurConversion || (prd as any).facteur_conversion || 1;
+                  const pu = prd.prixUnitaire || (prd as any).prix_unitaire || 0;
+                  const hasColis = fc > 1;
+                  const prixColis = pu * fc;
 
-                  {!isVendeur ? (
-                    <button
-                      type="button"
-                      onClick={() => handleAdd(prd)}
-                      className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700 active:scale-95"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                      Ajouter
-                    </button>
-                  ) : (
-                    <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
-                      {prd.code}
-                    </span>
-                  )}
-                </div>
+                  return (
+                    <div className="mt-6 flex items-center justify-between border-t border-slate-100 pt-4">
+                      <div>
+                        {hasColis ? (
+                          <div>
+                            <div className="flex items-baseline gap-1.5 flex-wrap">
+                              <span className="text-base sm:text-lg font-black text-blue-600">
+                                {prixColis.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
+                              </span>
+                              <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
+                                / colis (x{fc})
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-500 font-medium mt-0.5">
+                              Soit {pu.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA / {prd.unite || 'unité'} • TVA {prd.tva ?? 19}%
+                            </div>
+                          </div>
+                        ) : (
+                          <div>
+                            <div className="text-base font-black text-blue-600">
+                              {pu.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA <span className="text-xs font-normal text-slate-500">HT</span>
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              Unité : <span className="font-semibold text-slate-700">{prd.unite || 'Pièce'}</span> • TVA {prd.tva ?? 19}%
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {!isVendeur ? (
+                        <button
+                          type="button"
+                          onClick={() => handleAdd(prd)}
+                          className="inline-flex items-center gap-1 rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-blue-700 active:scale-95 shrink-0"
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                          <span>{hasColis ? 'Ajouter Colis' : 'Ajouter'}</span>
+                        </button>
+                      ) : (
+                        <span className="rounded-lg bg-slate-100 px-2.5 py-1 text-[11px] font-semibold text-slate-500">
+                          {prd.code}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             );
           })}

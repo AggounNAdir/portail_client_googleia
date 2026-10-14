@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { ShoppingCart, Plus, Minus, Trash2, CheckCircle2, ArrowRight, Loader2 } from 'lucide-react';
-import { CartItem, CommandeOut } from '../types';
+import { CartItem, CommandeOut, getProductConversionFactor, getProductUnitPrice } from '../types';
 import { commandeService } from '../services/commandeService';
 
 interface CartPageProps {
@@ -26,8 +26,8 @@ export const CartPage: React.FC<CartPageProps> = ({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   const totalHT = cart.reduce((sum, item) => {
-    const pu = item.produit?.prixUnitaire || 0;
-    const facteur = item.produit?.facteurConversion || 1;
+    const pu = getProductUnitPrice(item.produit);
+    const facteur = getProductConversionFactor(item.produit);
     return sum + pu * facteur * (item.quantite || 1);
   }, 0);
   const totalArticles = cart.reduce((sum, item) => sum + (item.quantite || 0), 0);
@@ -43,15 +43,15 @@ export const CartPage: React.FC<CartPageProps> = ({
         total: totalHT,
         montantTotal: totalHT,
         lignes: cart.map((i) => {
-          const pu = i.produit?.prixUnitaire || 0;
-          const facteur = i.produit?.facteurConversion || 1;
+          const pu = getProductUnitPrice(i.produit);
+          const facteur = getProductConversionFactor(i.produit);
           const totalLigne = pu * facteur * (i.quantite || 1);
           return {
             produitId: i.produit.id,
             quantite: i.quantite,
             prixUnitaire: pu,
             facteurConversion: facteur,
-            unite: i.produit.unite,
+            unite: i.produit.unite || 'Pièce',
             total: totalLigne,
           };
         }),
@@ -112,9 +112,10 @@ export const CartPage: React.FC<CartPageProps> = ({
           {/* Liste des articles */}
           <div className="space-y-3 lg:col-span-2">
             {cart.map((item, idx) => {
-              const pu = item.produit?.prixUnitaire || 0;
-              const facteur = item.produit?.facteurConversion || 1;
+              const pu = getProductUnitPrice(item.produit);
+              const facteur = getProductConversionFactor(item.produit);
               const itemTotal = pu * facteur * item.quantite;
+              const prixColis = pu * facteur;
 
               return (
                 <div
@@ -130,7 +131,7 @@ export const CartPage: React.FC<CartPageProps> = ({
                         ({item.produit.unite || 'Pièce'})
                       </span>
                       {facteur > 1 && (
-                        <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-semibold text-indigo-700">
+                        <span className="rounded-md bg-indigo-50 border border-indigo-100 px-2 py-0.5 text-[10px] font-bold text-indigo-700">
                           Colisage : x{facteur}
                         </span>
                       )}
@@ -139,12 +140,18 @@ export const CartPage: React.FC<CartPageProps> = ({
                       {item.produit.designation}
                     </div>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                      <span className="font-semibold text-blue-600">
-                        {pu.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA HT
-                      </span>
-                      {facteur > 1 && (
-                        <span className="text-[11px] text-slate-500">
-                          ({(pu * facteur).toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA / colis)
+                      {facteur > 1 ? (
+                        <>
+                          <span className="font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-2 py-0.5">
+                            Prix colis : {prixColis.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
+                          </span>
+                          <span className="text-[11px] text-slate-500">
+                            (P.U unitaire : {pu.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA)
+                          </span>
+                        </>
+                      ) : (
+                        <span className="font-semibold text-blue-600">
+                          {pu.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA HT
                         </span>
                       )}
                     </div>
@@ -172,12 +179,12 @@ export const CartPage: React.FC<CartPageProps> = ({
                     </div>
 
                     <div className="text-right">
-                      <div className="text-sm font-black text-slate-900">
+                      <div className="text-base font-black text-slate-900">
                         {itemTotal.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
                       </div>
                       {facteur > 1 && (
-                        <div className="text-[10px] text-slate-400">
-                          {item.quantite} × {facteur} = {item.quantite * facteur} unités
+                        <div className="text-[11px] font-semibold text-indigo-600">
+                          {item.quantite} colis × {facteur} = {item.quantite * facteur} {item.produit.unite || 'unités'}
                         </div>
                       )}
                     </div>

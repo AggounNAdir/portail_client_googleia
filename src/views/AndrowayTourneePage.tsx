@@ -290,17 +290,22 @@ export const AndrowayTourneePage: React.FC = () => {
           return true;
         });
 
-        return uniqueItems.map((p) => ({
-          id: p.id,
-          code: p.code,
-          designation: p.designation,
-          prix: p.prixUnitaire,
-          unite: p.unite || 'Pièce',
-          facteurConversion: p.facteurConversion || p.uniteFacteur || 1,
-          uniteFacteur: p.facteurConversion || p.uniteFacteur || 1,
-          stock: p.stockActuel,
-          quantite: prevQuantites.get(p.id) || 0,
-        }));
+        return uniqueItems.map((p) => {
+          const fc = (p as any).facteurConversion ?? (p as any).facteur_conversion ?? (p as any).uniteFacteur ?? 1;
+          const pu = (p as any).prixUnitaire ?? (p as any).prix_unitaire ?? (p as any).prix ?? 0;
+          const stock = (p as any).stockActuel ?? (p as any).stock_actuel ?? (p as any).stock ?? 0;
+          return {
+            id: p.id,
+            code: p.code,
+            designation: p.designation,
+            prix: pu,
+            unite: p.unite || 'Pièce',
+            facteurConversion: fc > 0 ? fc : 1,
+            uniteFacteur: fc > 0 ? fc : 1,
+            stock: stock,
+            quantite: prevQuantites.get(p.id) || 0,
+          };
+        });
       });
     } catch (err) {
       console.error('Erreur chargement catalogue pour vente tournée:', err);
@@ -383,6 +388,7 @@ export const AndrowayTourneePage: React.FC = () => {
         prixUnitaire: a.prix,
         unite: a.unite,
         uniteFacteur: a.uniteFacteur,
+        facteurConversion: a.facteurConversion,
         quantite: a.quantite,
         montant: a.prix * a.uniteFacteur * a.quantite,
       }));
@@ -1022,7 +1028,7 @@ export const AndrowayTourneePage: React.FC = () => {
                               </span>
                             )}
                             <span className="font-bold text-slate-800">
-                              {formatDZD(art.prix)} DZD
+                              P.U: {formatDZD(art.prix)} DZD
                             </span>
                             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-700">
                               Unité: <span className="font-bold text-slate-900">{art.unite || 'Pièce'}</span>
@@ -1030,6 +1036,11 @@ export const AndrowayTourneePage: React.FC = () => {
                             <span className="rounded bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 text-[10px] font-semibold text-indigo-700">
                               Facteur: <span className="font-bold text-indigo-900">{art.facteurConversion ?? 1}</span>
                             </span>
+                            {art.facteurConversion > 1 && (
+                              <span className="rounded bg-blue-50 border border-blue-200 px-1.5 py-0.5 text-[10px] font-bold text-blue-800">
+                                Prix Colis (x{art.facteurConversion}) : {formatDZD(art.prix * art.facteurConversion)} DZD
+                              </span>
+                            )}
                             {typeof art.stock === 'number' && (
                               <span
                                 className={`rounded px-1.5 py-0.5 text-[10px] font-medium ${
@@ -1105,7 +1116,10 @@ export const AndrowayTourneePage: React.FC = () => {
               <div className="flex flex-col">
                 <span className="font-semibold text-slate-600">Total Commande :</span>
                 <span className="text-[11px] text-slate-400">
-                  {orderArticles.filter((a) => a.quantite > 0).reduce((s, a) => s + a.quantite, 0)} unité(s)
+                  {orderArticles.filter((a) => a.quantite > 0).reduce((s, a) => s + a.quantite, 0)} colis / conditionnement(s) •{' '}
+                  <span className="font-medium text-slate-600">
+                    {orderArticles.filter((a) => a.quantite > 0).reduce((s, a) => s + a.quantite * (a.facteurConversion || 1), 0)} unité(s) totale(s)
+                  </span>
                 </span>
               </div>
               <span className="text-xl font-black text-blue-600">

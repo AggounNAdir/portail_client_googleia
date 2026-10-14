@@ -125,9 +125,15 @@ export class AndrowaySyncService {
             const rawLignes = Array.isArray(op.payload.lignes) ? op.payload.lignes : [];
             apiClient.addLocalCommande({
               observations: op.payload.observations || `Commande Androway - ${op.payload.nomClient || ''}`,
+              total: op.payload.totalDZD ?? op.payload.total,
+              montantTotal: op.payload.totalDZD ?? op.payload.total,
               lignes: rawLignes.map((l: any) => ({
                 produitId: Number(l.produitId ?? l.produit_id ?? l.id ?? 101),
                 quantite: Number(l.quantite || 1),
+                prixUnitaire: Number(l.prixUnitaire ?? l.prix ?? 0),
+                facteurConversion: Number(l.facteurConversion ?? l.uniteFacteur ?? 1),
+                unite: l.unite || 'Pièce',
+                total: Number(l.montant ?? l.total ?? 0),
               })),
             });
           }
@@ -168,29 +174,51 @@ export class AndrowaySyncService {
 
         let bodyPayload = op.payload;
         if (op.type === 'commande') {
+          const isProspect = Boolean(
+            op.payload.is_prospect ||
+            (op.payload.codeClient && String(op.payload.codeClient).startsWith('PROSP')) ||
+            (op.payload.code_client && String(op.payload.code_client).startsWith('PROSP'))
+          );
           const rawClientId = op.payload.client_id ?? op.payload.clientId;
           const parsedClientId = typeof rawClientId === 'number' ? rawClientId : parseInt(String(rawClientId), 10);
+          const rawProspectId = op.payload.prospect_id ?? (isProspect ? parsedClientId : null);
+          const parsedProspectId = typeof rawProspectId === 'number' ? rawProspectId : parseInt(String(rawProspectId), 10);
           const rawLignes = Array.isArray(op.payload.lignes) ? op.payload.lignes : [];
           const cleanLignes = rawLignes
             .map((l: any) => {
               const pid = Number(l.produitId ?? l.produit_id ?? l.id ?? 0);
               const qte = Number(l.quantite || 1);
+              const pu = Number(l.prixUnitaire ?? l.prix ?? 0);
+              const facteur = Number(l.facteurConversion ?? l.uniteFacteur ?? l.facteur_conversion ?? 1);
+              const tot = Number(l.montant ?? l.total ?? (pu * facteur * qte));
               return {
                 produit_id: pid > 0 ? pid : 101,
                 produitId: pid > 0 ? pid : 101,
                 quantite: qte > 0 ? qte : 1,
+                prix_unitaire: pu,
+                prixUnitaire: pu,
+                facteur_conversion: facteur,
+                facteurConversion: facteur,
+                unite: l.unite || 'Pièce',
+                total: tot,
+                montant: tot,
               };
             })
             .filter((l: any) => l.produit_id > 0 && l.quantite > 0);
 
           bodyPayload = {
-            client_id: (!isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : 1,
-            clientId: (!isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : 1,
+            client_id: (!isProspect && !isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : null,
+            clientId: (!isProspect && !isNaN(parsedClientId) && parsedClientId > 0) ? parsedClientId : null,
+            prospect_id: (!isNaN(parsedProspectId) && parsedProspectId > 0) ? parsedProspectId : null,
+            is_prospect: isProspect,
             code_client: op.payload.codeClient || op.payload.code_client || null,
             codeClient: op.payload.codeClient || op.payload.code_client || null,
+            nom_client: op.payload.nomClient || op.payload.nom_client || null,
+            nomClient: op.payload.nomClient || op.payload.nom_client || null,
             numero: op.payload.numero,
             observations: op.payload.observations || `Commande Androway - ${op.payload.nomClient || ''}`,
             total: op.payload.totalDZD ?? op.payload.total,
+            montant_total: op.payload.totalDZD ?? op.payload.total,
             lignes: cleanLignes,
           };
         } else if (op.type === 'encaissement') {

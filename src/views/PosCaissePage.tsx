@@ -1,19 +1,20 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Printer,
   Plus,
   Minus,
   Trash2,
   Receipt,
-  RotateCcw,
   Barcode,
   CheckCircle2,
   X,
-  CreditCard,
+  Package,
+  Layers,
 } from 'lucide-react';
 import { PosArticleLigne, ProduitCatalogue } from '../types';
 import { posThermalPrinterService, ReceiptData } from '../services/posThermalPrinterService';
 import { produitService } from '../services/produitService';
+import { apiClient } from '../services/apiClient';
 
 export const PosCaissePage: React.FC = () => {
   const [panier, setPanier] = useState<PosArticleLigne[]>([]);
@@ -27,18 +28,37 @@ export const PosCaissePage: React.FC = () => {
 
   const [barcodeInput, setBarcodeInput] = useState('');
 
-  React.useEffect(() => {
-    produitService.getCatalogue().then((items) => {
-      setProduitsCatalogue(items.slice(0, 8));
-    }).catch(() => {});
+  useEffect(() => {
+    produitService.getCatalogue('', 100).then((items) => {
+      setProduitsCatalogue(items);
+    }).catch(() => {
+      setProduitsCatalogue(apiClient.getLocalProduits());
+    });
   }, []);
 
-  const totalTTC = panier.reduce((sum, item) => sum + item.prix * item.quantite, 0);
+  // Multiplicateur pour une ligne (applique le facteur de conversion si vente au colis/conditionnement)
+  const getMultiplier = (item: PosArticleLigne): number => {
+    if (item.modeVente === 'piece') return 1;
+    return item.facteurConversion > 0 ? item.facteurConversion : 1;
+  };
+
+  const getLigneTotal = (item: PosArticleLigne): number => {
+    return item.prix * getMultiplier(item) * item.quantite;
+  };
+
+  const totalTTC = panier.reduce((sum, item) => sum + getLigneTotal(item), 0);
   const totalHT = totalTTC / 1.19;
   const tva = totalTTC - totalHT;
   const monnaieRendue = Math.max(0, especesRecues - totalTTC);
 
-  const handleAjouterArticle = (designation: string, prix: number, codeBarre: string) => {
+  const handleAjouterArticle = (
+    designation: string,
+    prix: number,
+    codeBarre: string,
+    facteurConversion: number = 1,
+    unite: string = 'Pièce'
+  ) => {
+    const fc = facteurConversion > 0 ? facteurConversion : 1;
     setPanier((prev) => {
       const idx = prev.findIndex((it) => it.codeBarre === codeBarre);
       if (idx !== -1) {
@@ -54,19 +74,46 @@ export const PosCaissePage: React.FC = () => {
           prix,
           codeBarre,
           quantite: 1,
+          facteurConversion: fc,
+          uniteFacteur: fc,
+          unite: unite || 'Pièce',
+          modeVente: fc > 1 ? 'colis' : 'piece',
         },
       ];
+    });
+  };
+
+  const handleToggleModeVente = (index: number) => {
+    setPanier((prev) => {
+      const next = [...prev];
+      const item = next[index];
+      next[index] = {
+        ...item,
+        modeVente: item.modeVente === 'piece' ? 'colis' : 'piece',
+      };
+      return next;
     });
   };
 
   const handleBarcodeSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!barcodeInput.trim()) return;
-    const found = produitsCatalogue.find((a) => a.code === barcodeInput.trim());
+    const cleanBar = barcodeInput.trim().toLowerCase();
+    const all = produitsCatalogue.length > 0 ? produitsCatalogue : apiClient.getLocalProduits();
+    const found = all.find(
+      (a) => a.code.toLowerCase() === cleanBar || a.designation.toLowerCase().includes(cleanBar)
+    );
+
     if (found) {
-      handleAjouterArticle(found.designation, found.prixUnitaire, found.code);
+      handleAjouterArticle(
+        found.designation,
+        found.prixUnitaire,
+        found.code,
+        found.facteurConversion || found.uniteFacteur || 1,
+        found.unite || 'Pièce'
+      );
     } else {
-      handleAjouterArticle(`Article Scanné ${barcodeInput}`, 0, barcodeInput.trim());
+      handleAjouterArticle(`Article Scanné ${barcodeInput.trim()}`, 0, barcodeInput.trim(), 1, 'Pièce');
     }
     setBarcodeInput('');
   };
@@ -79,7 +126,10 @@ export const PosCaissePage: React.FC = () => {
         designation: a.designation,
         quantite: a.quantite,
         prix: a.prix,
-        total: a.prix * a.quantite,
+        facteurConversion: getMultiplier(a),
+        unite: a.unite,
+        modeVente: a.modeVente,
+        total: getLigneTotal(a),
       })),
       totalHT,
       tva,
@@ -101,13 +151,15 @@ export const PosCaissePage: React.FC = () => {
     setTicketDialog(null);
   };
 
+  const raccourcisArticles = produitsCatalogue.slice(0, 10);
+
   return (
     <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-5xl flex-col p-4 sm:p-6 pb-20 md:pb-6">
       {/* Raccourcis Articles Rapides */}
       <div className="mb-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
-            Raccourcis Articles Caisse
+            Raccourcis Articles Caisse & Stock
           </span>
           <form onSubmit={handleBarcodeSubmit} className="flex items-center gap-1.5">
             <div className="relative">
@@ -116,8 +168,8 @@ export const PosCaissePage: React.FC = () => {
                 type="text"
                 value={barcodeInput}
                 onChange={(e) => setBarcodeInput(e.target.value)}
-                placeholder="Scanner code-barre..."
-                className="h-8 w-44 rounded-xl border border-slate-300 bg-white pl-8 pr-2 text-xs focus:border-blue-600 focus:outline-hidden"
+                placeholder="Scanner ou réf article..."
+                className="h-8 w-48 rounded-xl border border-slate-300 bg-white pl-8 pr-2 text-xs focus:border-blue-600 focus:outline-hidden"
               />
             </div>
             <button
@@ -129,20 +181,36 @@ export const PosCaissePage: React.FC = () => {
           </form>
         </div>
 
-        {produitsCatalogue.length > 0 && (
+        {raccourcisArticles.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {produitsCatalogue.map((art, idx) => (
-              <button
-                key={`pos-art-${art.id}-${art.code || ''}-${idx}`}
-                type="button"
-                onClick={() => handleAjouterArticle(art.designation, art.prixUnitaire, art.code)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-blue-300 hover:bg-blue-50"
-              >
-                <Plus className="h-3.5 w-3.5 text-blue-600" />
-                <span>{art.designation}</span>
-                <span className="font-bold text-slate-900">({art.prixUnitaire.toFixed(0)} DA)</span>
-              </button>
-            ))}
+            {raccourcisArticles.map((art, idx) => {
+              const fc = art.facteurConversion || art.uniteFacteur || 1;
+              return (
+                <button
+                  key={`pos-art-${art.id}-${art.code || ''}-${idx}`}
+                  type="button"
+                  onClick={() =>
+                    handleAjouterArticle(
+                      art.designation,
+                      art.prixUnitaire,
+                      art.code,
+                      fc,
+                      art.unite
+                    )
+                  }
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 shadow-xs hover:border-blue-300 hover:bg-blue-50 transition"
+                >
+                  <Plus className="h-3.5 w-3.5 text-blue-600" />
+                  <span>{art.designation}</span>
+                  <span className="font-bold text-slate-900">({art.prixUnitaire.toFixed(0)} DA)</span>
+                  {fc > 1 && (
+                    <span className="rounded bg-indigo-50 border border-indigo-100 px-1.5 py-0.2 text-[10px] font-bold text-indigo-700">
+                      x{fc}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         )}
       </div>
@@ -156,71 +224,140 @@ export const PosCaissePage: React.FC = () => {
               Panier de caisse vide
             </p>
             <p className="text-xs text-slate-400">
-              Scannez un code-barre ou cliquez sur un article rapide
+              Scannez un code-barre ou cliquez sur un article rapide pour encaisser
             </p>
           </div>
         ) : (
           <div className="divide-y divide-slate-100">
-            {panier.map((item, i) => (
-              <div
-                key={`pos-panier-item-${item.id}-${i}`}
-                className="flex items-center justify-between py-3 text-xs sm:text-sm"
-              >
-                <div className="flex-1 pr-2">
-                  <div className="font-bold text-slate-900">{item.designation}</div>
-                  <div className="font-mono text-[11px] text-slate-400">
-                    CB: {item.codeBarre} • {item.prix.toFixed(0)} DZD
-                  </div>
-                </div>
+            {panier.map((item, i) => {
+              const fc = item.facteurConversion || 1;
+              const isColis = item.modeVente !== 'piece';
+              const mult = getMultiplier(item);
+              const ligneTotal = getLigneTotal(item);
 
-                <div className="flex items-center gap-3">
-                  <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setPanier((prev) => {
-                          if (item.quantite > 1) {
+              return (
+                <div
+                  key={`pos-panier-item-${item.id}-${i}`}
+                  className="flex flex-col sm:flex-row sm:items-center justify-between py-3.5 gap-2 text-xs sm:text-sm"
+                >
+                  <div className="flex-1 pr-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-bold text-slate-900">{item.designation}</span>
+                      {fc > 1 && (
+                        <span className="inline-flex items-center gap-1 rounded-md bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700">
+                          <Layers className="h-3 w-3" />
+                          Facteur: x{fc} ({item.unite})
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="font-mono text-[11px] text-slate-400 mt-0.5">
+                      Réf: {item.codeBarre} • P.U: {item.prix.toFixed(2)} DZD / {item.unite || 'Pièce'}
+                    </div>
+
+                    {/* Sélecteur de mode de calcul : Au Colis (xFacteur) ou À la pièce (x1) */}
+                    {fc > 1 && (
+                      <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                        <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50 p-0.5 text-[11px] font-semibold">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (!isColis) handleToggleModeVente(i);
+                            }}
+                            className={`rounded-md px-2 py-0.5 transition ${
+                              isColis
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            📦 Colis / Carton (x{fc})
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isColis) handleToggleModeVente(i);
+                            }}
+                            className={`rounded-md px-2 py-0.5 transition ${
+                              !isColis
+                                ? 'bg-indigo-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:text-slate-900'
+                            }`}
+                          >
+                            🔹 À l'unité (x1)
+                          </button>
+                        </div>
+
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {isColis ? (
+                            <>
+                              {item.quantite} colis × {fc} = <strong className="text-slate-800">{item.quantite * fc} {item.unite}s</strong> • {(item.prix * fc).toFixed(2)} DA / colis
+                            </>
+                          ) : (
+                            <>
+                              {item.quantite} unité(s) au détail • {item.prix.toFixed(2)} DA / unité
+                            </>
+                          )}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                    <div className="flex items-center rounded-xl border border-slate-200 bg-slate-50 p-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPanier((prev) => {
+                            if (item.quantite > 1) {
+                              const n = [...prev];
+                              n[i].quantite -= 1;
+                              return n;
+                            }
+                            return prev.filter((_, idx) => idx !== i);
+                          });
+                        }}
+                        className="rounded-lg p-1 text-slate-600 hover:bg-white transition"
+                      >
+                        <Minus className="h-3 w-3" />
+                      </button>
+                      <span className="w-8 text-center font-bold text-slate-900">{item.quantite}</span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPanier((prev) => {
                             const n = [...prev];
-                            n[i].quantite -= 1;
+                            n[i].quantite += 1;
                             return n;
-                          }
-                          return prev.filter((_, idx) => idx !== i);
-                        });
-                      }}
-                      className="rounded-lg p-1 text-slate-600 hover:bg-white"
-                    >
-                      <Minus className="h-3 w-3" />
-                    </button>
-                    <span className="w-7 text-center font-bold">{item.quantite}</span>
+                          });
+                        }}
+                        className="rounded-lg p-1 text-slate-600 hover:bg-white transition"
+                      >
+                        <Plus className="h-3 w-3" />
+                      </button>
+                    </div>
+
+                    <div className="w-24 text-right">
+                      <div className="font-black text-slate-900 text-sm sm:text-base">
+                        {ligneTotal.toFixed(2)} DA
+                      </div>
+                      {fc > 1 && (
+                        <div className="text-[10px] text-slate-400">
+                          {item.quantite} × {mult} × {item.prix.toFixed(0)}
+                        </div>
+                      )}
+                    </div>
+
                     <button
                       type="button"
-                      onClick={() => {
-                        setPanier((prev) => {
-                          const n = [...prev];
-                          n[i].quantite += 1;
-                          return n;
-                        });
-                      }}
-                      className="rounded-lg p-1 text-slate-600 hover:bg-white"
+                      onClick={() => setPanier((prev) => prev.filter((_, idx) => idx !== i))}
+                      className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600 transition"
                     >
-                      <Plus className="h-3 w-3" />
+                      <Trash2 className="h-4 w-4" />
                     </button>
                   </div>
-
-                  <div className="w-20 text-right font-black text-slate-900 sm:w-24">
-                    {(item.prix * item.quantite).toFixed(0)} DA
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => setPanier((prev) => prev.filter((_, idx) => idx !== i))}
-                    className="rounded-lg p-1.5 text-slate-400 hover:bg-red-50 hover:text-red-600"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -247,7 +384,8 @@ export const PosCaissePage: React.FC = () => {
               </label>
               <input
                 type="number"
-                value={especesRecues}
+                value={especesRecues === 0 ? '' : especesRecues}
+                placeholder="0"
                 onChange={(e) => setEspecesRecues(parseFloat(e.target.value) || 0)}
                 className="w-28 rounded-lg border border-slate-300 bg-white p-1 text-sm font-bold text-slate-800"
               />
@@ -266,7 +404,7 @@ export const PosCaissePage: React.FC = () => {
               type="button"
               disabled={panier.length === 0}
               onClick={handleImprimerTicket}
-              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3.5 text-xs font-bold text-white shadow-md hover:bg-slate-800 disabled:opacity-40"
+              className="inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3.5 text-xs font-bold text-white shadow-md hover:bg-slate-800 disabled:opacity-40 transition"
             >
               <Printer className="h-4 w-4 text-teal-400" />
               Encaisser & Imprimer Ticket 80mm
@@ -308,12 +446,26 @@ export const PosCaissePage: React.FC = () => {
               <div>Client : {ticketDialog.receiptData.nomClient}</div>
               <div className="my-2 border-b border-dashed border-slate-300" />
               <div className="space-y-1">
-                {ticketDialog.receiptData.articles.map((a, idx) => (
-                  <div key={idx} className="flex justify-between">
-                    <span className="truncate pr-2">{a.designation} (x{a.quantite})</span>
-                    <span className="font-bold">{a.total.toFixed(0)} DA</span>
-                  </div>
-                ))}
+                {ticketDialog.receiptData.articles.map((a, idx) => {
+                  const fc = a.facteurConversion || 1;
+                  return (
+                    <div key={idx} className="flex justify-between">
+                      <div className="truncate pr-2">
+                        <span className="font-semibold">{a.designation}</span>
+                        {fc > 1 ? (
+                          <span className="text-[10px] text-slate-500 block">
+                            {a.quantite} colis × {fc} {a.unite || ''} ({((a.prix) * fc).toFixed(0)} DA/colis)
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 block">
+                            {a.quantite} × {a.prix.toFixed(0)} DA
+                          </span>
+                        )}
+                      </div>
+                      <span className="font-bold">{a.total.toFixed(2)} DA</span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="my-2 border-b border-dashed border-slate-300" />
               <div className="flex justify-between font-black text-xs text-slate-900">

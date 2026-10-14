@@ -11,6 +11,7 @@ import {
 import { authService } from './services/authService';
 import { vendeurAuthService } from './services/vendeurAuthService';
 import { CartItem, ProduitCatalogue, CommandeOut } from './types';
+import { normalizeProduit } from './services/produitService';
 import { Header } from './components/Header';
 import { NavigationRail, NavTabItem } from './components/NavigationRail';
 import { BottomNavBar } from './components/BottomNavBar';
@@ -48,6 +49,12 @@ export const App: React.FC = () => {
           localStorage.removeItem(CART_STORAGE_KEY);
           return [];
         }
+        if (Array.isArray(parsed)) {
+          return parsed.map((item: any) => ({
+            ...item,
+            produit: item.produit ? normalizeProduit(item.produit) : item.produit,
+          }));
+        }
         return parsed;
       } catch (_) {}
     }
@@ -82,17 +89,19 @@ export const App: React.FC = () => {
   }, [userRole]);
 
   const handleAddToCart = (produit: ProduitCatalogue, quantite: number = 1) => {
+    const normalized = normalizeProduit(produit);
     setCart((prevCart) => {
-      const existingIndex = prevCart.findIndex((item) => item.produit.id === produit.id);
+      const existingIndex = prevCart.findIndex((item) => item.produit.id === normalized.id);
       if (existingIndex !== -1) {
         const next = [...prevCart];
         next[existingIndex] = {
           ...next[existingIndex],
+          produit: normalized,
           quantite: next[existingIndex].quantite + quantite,
         };
         return next;
       }
-      return [...prevCart, { produit, quantite }];
+      return [...prevCart, { produit: normalized, quantite }];
     });
   };
 

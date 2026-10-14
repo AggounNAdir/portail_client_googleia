@@ -44,15 +44,21 @@ export function normalizeProduit(raw: any): ProduitCatalogue {
     }
   }
 
+  const pUnitaire = typeof prix === 'number' ? prix : parseFloat(prix) || 0;
+  const sActuel = typeof stock === 'number' ? stock : parseFloat(stock) || 0;
+
   return {
     id: Number(raw.id ?? Math.floor(Math.random() * 100000)),
     code: String(raw.code ?? raw.reference ?? raw.ref ?? 'ART-NC'),
     designation: String(raw.designation ?? raw.nom ?? raw.libelle ?? raw.label ?? 'Article'),
     unite: uniteStr,
     facteurConversion,
+    facteur_conversion: facteurConversion,
     uniteFacteur: facteurConversion,
-    prixUnitaire: typeof prix === 'number' ? prix : parseFloat(prix) || 0,
-    stockActuel: typeof stock === 'number' ? stock : parseFloat(stock) || 0,
+    prixUnitaire: pUnitaire,
+    prix_unitaire: pUnitaire,
+    stockActuel: sActuel,
+    stock_actuel: sActuel,
     tva: typeof tvaVal === 'number' ? tvaVal : parseFloat(tvaVal) || 19.0,
   };
 }

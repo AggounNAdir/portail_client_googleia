@@ -9,13 +9,16 @@ export function normalizeCommande(raw: any): CommandeOut {
   const lignes = Array.isArray(rawLignes)
     ? rawLignes.map((l: any) => {
         const pu = l.prixUnitaireEstime ?? l.prix_unitaire ?? l.pu ?? l.prix ?? 0;
-        const tot = l.totalEstime ?? l.total ?? l.montant ?? (pu * (l.quantite || 1));
+        const facteur = l.facteurConversion ?? l.facteur_conversion ?? l.uniteFacteur ?? 1;
+        const tot = l.totalEstime ?? l.total ?? l.montant ?? (pu * facteur * (l.quantite || 1));
         return {
           id: Number(l.id || Math.floor(Math.random() * 100000)),
           produitId: Number(l.produitId ?? l.produit_id ?? l.id_produit ?? 0),
           code: String(l.code || l.reference || 'ART'),
           designation: String(l.designation || l.nom || 'Article'),
+          unite: l.unite || 'Pièce',
           quantite: Number(l.quantite || 1),
+          facteurConversion: Number(facteur),
           prixUnitaireEstime: typeof pu === 'number' ? pu : parseFloat(pu) || 0,
           totalEstime: typeof tot === 'number' ? tot : parseFloat(tot) || 0,
         };

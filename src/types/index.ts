@@ -6,10 +6,31 @@ export interface ProduitCatalogue {
   designation: string;
   unite: string;
   facteurConversion?: number;
+  facteur_conversion?: number;
   uniteFacteur?: number;
   prixUnitaire: number;
+  prix_unitaire?: number;
   stockActuel: number;
+  stock_actuel?: number;
   tva: number;
+}
+
+export function getProductConversionFactor(p: any): number {
+  if (!p) return 1;
+  const raw = p.facteurConversion ?? p.facteur_conversion ?? p.uniteFacteur ?? p.facteur ?? p.colisage;
+  const num = typeof raw === 'number' ? raw : parseFloat(String(raw));
+  return !isNaN(num) && num > 0 ? num : 1;
+}
+
+export function getProductUnitPrice(p: any): number {
+  if (!p) return 0;
+  const raw = p.prixUnitaire ?? p.prix_unitaire ?? p.prix_vente ?? p.prix ?? p.pu;
+  const num = typeof raw === 'number' ? raw : parseFloat(String(raw));
+  return !isNaN(num) && num > 0 ? num : 0;
+}
+
+export function getProductPackagePrice(p: any): number {
+  return getProductUnitPrice(p) * getProductConversionFactor(p);
 }
 
 export interface CartItem {
@@ -40,6 +61,7 @@ export interface CommandeLigneOut {
   designation: string;
   unite?: string;
   quantite: number;
+  facteurConversion?: number;
   prixUnitaireEstime: number;
   totalEstime: number;
 }
@@ -158,6 +180,10 @@ export interface PosArticleLigne {
   codeBarre: string;
   prix: number;
   quantite: number;
+  facteurConversion: number;
+  uniteFacteur?: number;
+  unite?: string;
+  modeVente?: 'colis' | 'piece';
 }
 
 export interface DepotStockItem {
