@@ -29,7 +29,7 @@ export const CommandesPage: React.FC = () => {
   };
 
   return (
-    <div className="mx-auto max-w-4xl p-4 sm:p-6">
+    <div className="mx-auto max-w-4xl p-4 sm:p-6 pb-28 md:pb-12">
       <div className="mb-6 flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-slate-900 sm:text-xl">

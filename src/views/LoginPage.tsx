@@ -102,8 +102,8 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-100 p-4 sm:p-6">
-      <div className="w-full max-w-md rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-10 relative">
+    <div className="flex min-h-screen min-h-[100dvh] w-full items-center justify-center bg-slate-100 p-4 sm:p-6 overflow-y-auto py-8">
+      <div className="w-full max-w-md my-auto rounded-3xl border border-slate-200 bg-white p-6 shadow-xl sm:p-10 relative">
         <div className="absolute top-4 right-4">
           <PWAInstallButton />
         </div>

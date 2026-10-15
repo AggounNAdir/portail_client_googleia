@@ -38,7 +38,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, userRole }) 
 
   if (userRole === 'vendeur' || (!profile && vendeur)) {
     return (
-      <div className="mx-auto max-w-3xl p-4 sm:p-6 pb-20 md:pb-6">
+      <div className="mx-auto max-w-3xl p-4 sm:p-6 pb-28 md:pb-12">
         {/* Carte Commercial Silwane Androway */}
         <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-amber-900 via-amber-800 to-stone-900 p-6 text-white shadow-xl">
           <div className="flex items-center justify-between">
@@ -128,7 +128,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onLogout, userRole }) 
   }
 
   return (
-    <div className="mx-auto max-w-3xl p-4 sm:p-6 pb-20 md:pb-6">
+    <div className="mx-auto max-w-3xl p-4 sm:p-6 pb-28 md:pb-12">
       {/* Carte Solde Client */}
       <div className="overflow-hidden rounded-3xl bg-gradient-to-br from-blue-900 via-blue-800 to-indigo-900 p-6 text-white shadow-xl">
         <div className="flex items-center justify-between">

@@ -1,14 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Search, X, Plus, RefreshCw, CheckCircle2, AlertTriangle, PackageX } from 'lucide-react';
+import { Search, X, Plus, RefreshCw, CheckCircle2, AlertTriangle, PackageX, ShoppingCart, ArrowRight } from 'lucide-react';
 import { ProduitCatalogue } from '../types';
 import { produitService } from '../services/produitService';
 
 interface CataloguePageProps {
   onAddToCart?: (produit: ProduitCatalogue, quantite: number) => void;
   userRole?: 'client' | 'vendeur' | null;
+  onGoToCart?: () => void;
 }
 
-export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userRole }) => {
+export const CataloguePage: React.FC<CataloguePageProps> = ({
+  onAddToCart,
+  userRole,
+  onGoToCart,
+}) => {
   const [produits, setProduits] = useState<ProduitCatalogue[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -54,12 +59,12 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
       } else {
         setAddedNotice(`Ajouté au panier : ${prd.designation} (${pu.toFixed(2)} DA)`);
       }
-      setTimeout(() => setAddedNotice(null), 2500);
+      setTimeout(() => setAddedNotice(null), 3500);
     }
   };
 
   return (
-    <div className="relative mx-auto max-w-5xl p-4 sm:p-6">
+    <div className="relative mx-auto max-w-5xl p-4 sm:p-6 pb-28">
       {/* Barre d'action supérieure */}
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <form onSubmit={handleSearchSubmit} className="relative flex-1">
@@ -82,21 +87,43 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
           )}
         </form>
 
-        <button
-          type="button"
-          onClick={() => loadProduits(searchQuery)}
-          className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50"
-        >
-          <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-          Actualiser
-        </button>
+        <div className="flex items-center gap-2">
+          {onGoToCart && !isVendeur && (
+            <button
+              type="button"
+              onClick={onGoToCart}
+              className="inline-flex items-center justify-center gap-1.5 rounded-2xl border border-blue-200 bg-blue-50 px-4 py-2.5 text-xs font-bold text-blue-700 shadow-xs hover:bg-blue-100 transition-colors"
+            >
+              <ShoppingCart className="h-3.5 w-3.5" />
+              <span>Voir Panier</span>
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => loadProduits(searchQuery)}
+            className="inline-flex items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-xs font-semibold text-slate-700 shadow-xs hover:bg-slate-50 transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualiser
+          </button>
+        </div>
       </div>
 
       {/* Notification Toast */}
       {addedNotice && (
-        <div className="fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-2.5 text-xs font-semibold text-white shadow-xl md:bottom-8">
-          <CheckCircle2 className="h-4 w-4 text-green-400" />
-          {addedNotice}
+        <div className="fixed bottom-20 right-4 z-50 flex items-center gap-3 rounded-2xl bg-slate-900/95 px-4 py-3 text-xs font-semibold text-white shadow-2xl backdrop-blur-md md:bottom-8 border border-slate-700">
+          <CheckCircle2 className="h-4 w-4 text-emerald-400 shrink-0" />
+          <span>{addedNotice}</span>
+          {onGoToCart && (
+            <button
+              type="button"
+              onClick={onGoToCart}
+              className="ml-2 inline-flex items-center gap-1 rounded-xl bg-emerald-600 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-emerald-500 transition-colors shrink-0"
+            >
+              Panier & Valider
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
         </div>
       )}
 
@@ -131,7 +158,6 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {produits.map((prd, idx) => {
             const enStock = prd.stockActuel > 0;
-
             return (
               <div
                 key={`cat-prd-${prd.id}-${prd.code || ''}-${idx}`}
@@ -183,7 +209,11 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
                           <div>
                             <div className="flex items-baseline gap-1.5 flex-wrap">
                               <span className="text-base sm:text-lg font-black text-blue-600">
-                                {prixColis.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA
+                                {prixColis.toLocaleString('fr-DZ', {
+                                  minimumFractionDigits: 2,
+                                  maximumFractionDigits: 2,
+                                })}{' '}
+                                DA
                               </span>
                               <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-md px-1.5 py-0.5">
                                 / colis (x{fc})
@@ -196,7 +226,11 @@ export const CataloguePage: React.FC<CataloguePageProps> = ({ onAddToCart, userR
                         ) : (
                           <div>
                             <div className="text-base font-black text-blue-600">
-                              {pu.toLocaleString('fr-DZ', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} DA <span className="text-xs font-normal text-slate-500">HT</span>
+                              {pu.toLocaleString('fr-DZ', {
+                                minimumFractionDigits: 2,
+                                maximumFractionDigits: 2,
+                              })}{' '}
+                              DA <span className="text-xs font-normal text-slate-500">HT</span>
                             </div>
                             <div className="text-[11px] text-slate-500">
                               Unité : <span className="font-semibold text-slate-700">{prd.unite || 'Pièce'}</span> • TVA {prd.tva ?? 19}%

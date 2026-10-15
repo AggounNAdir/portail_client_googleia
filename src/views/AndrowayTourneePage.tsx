@@ -541,7 +541,7 @@ export const AndrowayTourneePage: React.FC = () => {
   // tournée (dont toutes les actions nécessitent un jeton vendeur valide).
   if (!vendeurAuthed) {
     return (
-      <div className="mx-auto flex min-h-[70vh] max-w-md items-center justify-center p-4 sm:p-6">
+      <div className="mx-auto flex min-h-full max-w-md items-center justify-center p-4 sm:p-6 pb-28 md:pb-12">
         <div className="w-full rounded-3xl bg-slate-900 p-6 text-white shadow-lg sm:p-8">
           <div className="inline-flex items-center gap-2 rounded-full bg-teal-500/20 px-3 py-1 text-xs font-bold text-teal-400">
             <Navigation className="h-3.5 w-3.5" />
@@ -616,7 +616,7 @@ export const AndrowayTourneePage: React.FC = () => {
   }
 
   return (
-    <div className="mx-auto max-w-5xl p-4 sm:p-6 pb-24">
+    <div className="mx-auto max-w-5xl p-4 sm:p-6 pb-28 md:pb-12">
       {/* Toast Notification */}
       {notification && (
         <div className="fixed bottom-20 right-4 z-50 flex items-center gap-2 rounded-2xl bg-slate-900 px-4 py-3 text-xs font-semibold text-white shadow-2xl md:bottom-8">
@@ -912,8 +912,8 @@ export const AndrowayTourneePage: React.FC = () => {
 
       {/* MODAL 1: Vente Terrain / Prise de Commande */}
       {sellingClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="flex max-h-[90vh] w-full max-w-xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="flex max-h-[90dvh] my-auto w-full max-w-xl flex-col rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
@@ -1153,8 +1153,8 @@ export const AndrowayTourneePage: React.FC = () => {
 
       {/* MODAL 2: Encaissement Créance */}
       {paymentClient && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-md my-auto max-h-[90dvh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div>
                 <h3 className="text-base font-bold text-slate-900">
@@ -1245,8 +1245,8 @@ export const AndrowayTourneePage: React.FC = () => {
 
       {/* MODAL 3: Nouveau Prospect */}
       {showProspectModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-md my-auto max-h-[90dvh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <UserPlus className="h-5 w-5 text-teal-600" />
@@ -1346,8 +1346,8 @@ export const AndrowayTourneePage: React.FC = () => {
 
       {/* MODAL 4: Reconnexion Vendeur Rapide (en cas de 401 ou pour basculer de Démo à Serveur Réel) */}
       {showReloginModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-sm rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-sm my-auto max-h-[90dvh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <Lock className="h-5 w-5 text-teal-600" />

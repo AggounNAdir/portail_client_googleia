@@ -1,13 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import {
-  Package,
-  FileText,
-  ShoppingCart,
-  MapPin,
-  CreditCard,
-  Wallet,
-  User,
-} from 'lucide-react';
+import { Package, ShoppingCart, FileText, Wallet, User, MapPin, CreditCard } from 'lucide-react';
 import { authService } from './services/authService';
 import { vendeurAuthService } from './services/vendeurAuthService';
 import { CartItem, ProduitCatalogue, CommandeOut } from './types';
@@ -222,7 +214,7 @@ export const App: React.FC = () => {
   const currentTabMeta = activeTabs.find((t) => t.id === currentTab) || activeTabs[0];
 
   return (
-    <div className="flex h-screen w-full overflow-hidden bg-slate-50 font-sans">
+    <div className="flex h-screen h-[100dvh] w-full overflow-hidden bg-slate-50 font-sans">
       {/* Navigation latérale Desktop */}
       <NavigationRail
         currentTab={currentTab}
@@ -232,7 +224,7 @@ export const App: React.FC = () => {
       />
 
       {/* Zone de contenu principale */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex flex-1 flex-col min-w-0 h-full overflow-hidden">
         <Header
           title={currentTabMeta.title}
           subtitle={currentTabMeta.subtitle}
@@ -241,11 +233,17 @@ export const App: React.FC = () => {
           userRole={userRole}
         />
 
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto overscroll-y-contain pb-28 md:pb-10 scroll-smooth">
           {currentTab === 'catalogue' && (
-            <CataloguePage onAddToCart={handleAddToCart} userRole={userRole} />
+            <CataloguePage
+              onAddToCart={handleAddToCart}
+              userRole={userRole}
+              onGoToCart={() => setCurrentTab('panier')}
+            />
           )}
+
           {currentTab === 'commandes' && <CommandesPage />}
+
           {currentTab === 'panier' && (
             <CartPage
               cart={cart}
@@ -258,9 +256,13 @@ export const App: React.FC = () => {
               onGoToCatalogue={() => setCurrentTab('catalogue')}
             />
           )}
+
           {currentTab === 'androway' && <AndrowayTourneePage />}
+
           {currentTab === 'caisse' && <PosCaissePage />}
+
           {currentTab === 'finances' && <FinancesPage />}
+
           {currentTab === 'compte' && <ProfilePage onLogout={handleLogout} userRole={userRole} />}
         </main>
       </div>

@@ -15,21 +15,43 @@ export interface ProduitCatalogue {
   tva: number;
 }
 
-export function getProductConversionFactor(p: any): number {
+export function getProductConversionFactor(
+  p: Partial<ProduitCatalogue> | Record<string, unknown> | null | undefined
+): number {
   if (!p) return 1;
-  const raw = p.facteurConversion ?? p.facteur_conversion ?? p.uniteFacteur ?? p.facteur ?? p.colisage;
+  const obj = p as Record<string, unknown>;
+  const raw =
+    obj.facteurConversion ??
+    obj.facteur_conversion ??
+    obj.uniteFacteur ??
+    obj.facteur ??
+    obj.colisage ??
+    obj.cond ??
+    obj.nb_unite ??
+    obj.ratio;
   const num = typeof raw === 'number' ? raw : parseFloat(String(raw));
   return !isNaN(num) && num > 0 ? num : 1;
 }
 
-export function getProductUnitPrice(p: any): number {
+export function getProductUnitPrice(
+  p: Partial<ProduitCatalogue> | Record<string, unknown> | null | undefined
+): number {
   if (!p) return 0;
-  const raw = p.prixUnitaire ?? p.prix_unitaire ?? p.prix_vente ?? p.prix ?? p.pu;
+  const obj = p as Record<string, unknown>;
+  const raw =
+    obj.prixUnitaire ??
+    obj.prix_unitaire ??
+    obj.prix_vente ??
+    obj.prix ??
+    obj.pu ??
+    obj.price;
   const num = typeof raw === 'number' ? raw : parseFloat(String(raw));
   return !isNaN(num) && num > 0 ? num : 0;
 }
 
-export function getProductPackagePrice(p: any): number {
+export function getProductPackagePrice(
+  p: Partial<ProduitCatalogue> | Record<string, unknown> | null | undefined
+): number {
   return getProductUnitPrice(p) * getProductConversionFactor(p);
 }
 

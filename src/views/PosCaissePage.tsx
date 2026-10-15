@@ -154,7 +154,7 @@ export const PosCaissePage: React.FC = () => {
   const raccourcisArticles = produitsCatalogue.slice(0, 10);
 
   return (
-    <div className="mx-auto flex h-[calc(100vh-4rem)] max-w-5xl flex-col p-4 sm:p-6 pb-20 md:pb-6">
+    <div className="mx-auto flex min-h-[calc(100dvh-5rem)] max-w-5xl flex-col p-4 sm:p-6 pb-28 md:pb-12">
       {/* Raccourcis Articles Rapides */}
       <div className="mb-4">
         <div className="mb-2 flex items-center justify-between">
@@ -216,7 +216,7 @@ export const PosCaissePage: React.FC = () => {
       </div>
 
       {/* Panier Caisse */}
-      <div className="flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
+      <div className="min-h-[220px] flex-1 overflow-y-auto rounded-2xl border border-slate-200 bg-white p-4 shadow-xs">
         {panier.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-slate-400">
             <Receipt className="h-12 w-12 text-slate-300" />
@@ -415,8 +415,8 @@ export const PosCaissePage: React.FC = () => {
 
       {/* MODAL DIALOG: Ticket 80mm Généré */}
       {ticketDialog && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs overflow-y-auto">
+          <div className="w-full max-w-md my-auto max-h-[90dvh] overflow-y-auto rounded-3xl bg-white p-6 shadow-2xl">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <Printer className="h-5 w-5 text-slate-900" />

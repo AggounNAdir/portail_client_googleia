@@ -14,16 +14,23 @@ export function normalizeProduit(raw: any): ProduitCatalogue {
   const uniteStr = String(uniteLibelle !== undefined && uniteLibelle !== null ? uniteLibelle : 'Pièce').trim();
 
   // 2. Facteur de conversion (nombre d'unités dans un carton/colis) depuis la colonne 'facteur_conversion'
-  // Supporte : facteur_conversion, facteurConversion, facteur, facteur_conv, colisage, nb_unite, cond, conditionnement
+  // Supporte : facteur_conversion, facteurConversion, uniteFacteur, unite_facteur, facteur, colisage, qte_colis, cond, conditionnement, coeff
   const rawFacteur =
     raw.facteur_conversion ??
     raw.facteurConversion ??
+    raw.uniteFacteur ??
+    raw.unite_facteur ??
     raw.facteur_conv ??
     raw.facteur ??
     raw.colisage ??
+    raw.qte_colis ??
+    raw.quantite_colis ??
     raw.nb_unite ??
     raw.cond ??
     raw.conditionnement ??
+    raw.coeff ??
+    raw.coefficient ??
+    raw.ratio ??
     1;
 
   let facteurConversion = 1;
