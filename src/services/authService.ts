@@ -50,17 +50,6 @@ export class AuthService {
     }
   }
 
-  // Connexion démo / hors-ligne pour tests et présentation
-  loginAsDemo(codeClient = 'CLT-0001'): LoginResponse {
-    const trimmedCode = codeClient.trim() || 'CLT-0001';
-    const token = `client-demo-${Date.now()}`;
-    apiClient.saveToken(token, trimmedCode);
-    return {
-      accessToken: token,
-      tokenType: 'bearer',
-    };
-  }
-
   async logout(): Promise<void> {
     apiClient.clearAuth();
   }

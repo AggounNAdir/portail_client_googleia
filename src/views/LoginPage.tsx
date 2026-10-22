@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Server,
   Briefcase,
-  Sparkles,
   Info,
 } from 'lucide-react';
 import { authService } from '../services/authService';
@@ -87,17 +86,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       );
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const handleDemoLogin = () => {
-    setErrorMessage(null);
-    if (authMode === 'vendeur') {
-      vendeurAuthService.loginAsDemo(identifiant || 'VND-001');
-      onLoginSuccess('vendeur');
-    } else {
-      authService.loginAsDemo(identifiant || 'CLT-0001');
-      onLoginSuccess('client');
     }
   };
 
@@ -252,18 +240,6 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
             )}
           </button>
         </form>
-
-        {/* Option Connexion Hors-ligne / Démo */}
-        <div className="mt-4">
-          <button
-            type="button"
-            onClick={handleDemoLogin}
-            className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-slate-200 bg-slate-50 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 transition"
-          >
-            <Sparkles className="h-3.5 w-3.5 text-amber-500" />
-            <span>Tester en mode Démo / Hors-ligne ({authMode === 'vendeur' ? 'Vendeur' : 'Client'})</span>
-          </button>
-        </div>
 
         <div className="mt-6 border-t border-slate-100 pt-4 flex flex-col items-center gap-2">
           <button

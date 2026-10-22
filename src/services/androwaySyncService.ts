@@ -115,35 +115,6 @@ export class AndrowaySyncService {
       this.notify();
 
       try {
-        // Détection du mode Démo / Hors-ligne :
-        // Si l'utilisateur est en mode Démo (jeton non JWT ou préfixé démo),
-        // Si on est en mode démo OU qu'aucun jeton réel n'est encore configuré,
-        // on évite d'envoyer une requête vouée à l'échec (401 Unauthorized).
-        // On persiste et valide l'opération localement de manière transparente.
-        if (apiClient.isDemoVendeurToken() || !apiClient.hasVendeurToken()) {
-          if (op.type === 'commande') {
-            const rawLignes = Array.isArray(op.payload.lignes) ? op.payload.lignes : [];
-            apiClient.addLocalCommande({
-              observations: op.payload.observations || `Commande Androway - ${op.payload.nomClient || ''}`,
-              total: op.payload.totalDZD ?? op.payload.total,
-              montantTotal: op.payload.totalDZD ?? op.payload.total,
-              lignes: rawLignes.map((l: any) => ({
-                produitId: Number(l.produitId ?? l.produit_id ?? l.id ?? 101),
-                quantite: Number(l.quantite || 1),
-                prixUnitaire: Number(l.prixUnitaire ?? l.prix ?? 0),
-                facteurConversion: Number(l.facteurConversion ?? l.uniteFacteur ?? 1),
-                unite: l.unite || 'Pièce',
-                total: Number(l.montant ?? l.total ?? 0),
-              })),
-            });
-          }
-
-          op.status = 'success';
-          op.payload._localProcessed = true;
-          succeeded++;
-          this.saveQueue();
-          continue;
-        }
 
         let endpoint = '/commandes';
         // En tournée Androway, toutes les opérations (commandes, règlements, signatures, pointages)

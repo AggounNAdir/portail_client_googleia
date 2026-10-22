@@ -25,8 +25,6 @@ import { vendeurAuthService } from '../services/vendeurAuthService';
 import { apiClient } from '../services/apiClient';
 import { produitService } from '../services/produitService';
 
-const INITIAL_TOURNEE: ClientTourneeItem[] = [];
-
 // Helper de formatage monétaire avec 2 décimales (ex: "1 250,00" ou "0,00")
 const formatDZD = (val: number | string | undefined | null): string => {
   const num = typeof val === 'number' ? val : parseFloat(String(val || 0));
@@ -48,7 +46,7 @@ export const AndrowayTourneePage: React.FC = () => {
         }
       } catch (_) {}
     }
-    return INITIAL_TOURNEE;
+    return [];
   });
 
   const [pendingCount, setPendingCount] = useState(androwaySyncService.getPendingCount());
@@ -109,8 +107,6 @@ export const AndrowayTourneePage: React.FC = () => {
   const [reloginPassword, setReloginPassword] = useState<string>('');
   const [reloginError, setReloginError] = useState<string | null>(null);
   const [reloginLoading, setReloginLoading] = useState<boolean>(false);
-
-  const isDemoMode = apiClient.isDemoVendeurToken();
 
   useEffect(() => {
     const handleVendeurUnauthorized = () => {
@@ -425,11 +421,9 @@ export const AndrowayTourneePage: React.FC = () => {
 
     setSellingClient(null);
     setOrderArticles((prev) => prev.map((a) => ({ ...a, quantite: 0 })));
-    if (isDemoMode) {
-      showToast(`Bon de commande ${numBC} généré (${formatDZD(total)} DZD) [Mode Démo Local - Hors-ligne]`);
-    } else {
+   
       showToast(`Bon de commande ${numBC} généré (${formatDZD(total)} DZD) — Synchro serveur en cours`);
-    }
+    
   };
 
   // Valider Encaissement
@@ -598,17 +592,6 @@ export const AndrowayTourneePage: React.FC = () => {
               {vendeurLoginLoading ? 'Connexion…' : 'Se connecter'}
             </button>
 
-            <button
-              type="button"
-              onClick={() => {
-                vendeurAuthService.loginAsDemo(vendeurCode || 'VND-001');
-                setVendeurAuthed(true);
-              }}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-800/80 py-2.5 text-xs font-semibold text-teal-300 hover:bg-slate-700/80 transition"
-            >
-              <Sparkles className="h-3.5 w-3.5 text-teal-400" />
-              Tester en mode Démo Vendeur (Hors-ligne)
-            </button>
           </form>
         </div>
       </div>
@@ -640,30 +623,6 @@ export const AndrowayTourneePage: React.FC = () => {
               Vente nomade, encaissement de créances et pointage GPS en mode déconnecté
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-2">
-              {isDemoMode ? (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-500/30 bg-amber-500/10 px-2.5 py-1 text-[11px] font-semibold text-amber-300">
-                  <Sparkles className="h-3 w-3 text-amber-400" />
-                  Mode Démo (Hors-ligne)
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-300">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  Serveur Connecté ({vendeurProfile?.code || 'VND'})
-                </span>
-              )}
-
-              {isDemoMode && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setReloginCode(vendeurProfile?.code || 'VND-0001');
-                    setShowReloginModal(true);
-                  }}
-                  className="rounded-full bg-teal-600/80 px-3 py-1 text-[11px] font-bold text-white hover:bg-teal-600 transition"
-                >
-                  Se connecter au serveur
-                </button>
-              )}
 
               <button
                 type="button"

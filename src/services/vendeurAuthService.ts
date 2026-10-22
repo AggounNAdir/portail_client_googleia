@@ -55,8 +55,9 @@ export class VendeurAuthService {
         throw err;
       }
     }
-
-    const token = data.access_token || data.accessToken || data.token || `vendeur-jwt-${Date.now()}`;
+    const token = data.access_token || data.accessToken || data.token;
+    if (!token) throw new Error('Réponse du serveur invalide : jeton manquant');
+    
     const rawVendeur = data.vendeur || data.user || data;
     const vendeur: VendeurProfile = {
       id: rawVendeur.id ? Number(rawVendeur.id) : 1,
@@ -70,24 +71,6 @@ export class VendeurAuthService {
     return {
       accessToken: token,
       tokenType: data.token_type || 'bearer',
-      vendeur,
-    };
-  }
-
-  // Connexion démo / hors-ligne pour tests et présentation
-  loginAsDemo(codeVendeur = 'VND-001'): VendeurLoginResponse {
-    const trimmedCode = codeVendeur.trim() || 'VND-001';
-    const token = `vendeur-demo-${Date.now()}`;
-    const vendeur: VendeurProfile = {
-      id: 1,
-      code: trimmedCode,
-      nom: `Commercial ${trimmedCode} (Démo)`,
-      tel: '0550 12 34 56',
-    };
-    apiClient.saveVendeurToken(token, vendeur.code, vendeur);
-    return {
-      accessToken: token,
-      tokenType: 'bearer',
       vendeur,
     };
   }

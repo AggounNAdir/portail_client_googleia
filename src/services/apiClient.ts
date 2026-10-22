@@ -391,25 +391,13 @@ class ApiClient {
     if (!token) return false;
     const cleanToken = token.replace(/^Bearer\s+/i, '').trim();
     if (
-      cleanToken.startsWith('demo-') ||
-      cleanToken.startsWith('vendeur-demo-') ||
+    
       cleanToken.startsWith('vendeur-jwt-')
     ) {
       return false;
     }
     const parts = cleanToken.split('.');
     return parts.length === 3;
-  }
-
-  public isRealVendeurToken(): boolean {
-    const token = this.getVendeurAccessToken();
-    return this.isRealJwtToken(token);
-  }
-
-  public isDemoVendeurToken(): boolean {
-    const token = this.getVendeurAccessToken();
-    if (!token) return true;
-    return !this.isRealJwtToken(token);
   }
 
   public hasVendeurToken(): boolean {
@@ -445,7 +433,7 @@ class ApiClient {
   public async request<T>(
     path: string,
     options: RequestInit = {},
-    fallbackData?: () => T,
+    _unused?: unknown,
     tokenType: TokenType = 'client'
   ): Promise<T> {
     // Si la page est en HTTPS (ex: Google Cloud Run) et que l'URL cible est en HTTP local (ex: http://192.168.1.70),
@@ -454,8 +442,8 @@ class ApiClient {
     const isBrowserHttps = typeof window !== 'undefined' && window.location.protocol === 'https:';
     const isTargetHttpInsecure = this.baseUrl.startsWith('http://') && !this.baseUrl.includes('localhost') && !this.baseUrl.includes('127.0.0.1');
 
-    if (isBrowserHttps && isTargetHttpInsecure && fallbackData) {
-      return fallbackData();
+    if (isBrowserHttps && isTargetHttpInsecure) {
+      throw new Error("Le serveur API doit être en HTTPS (la page est servie en HTTPS).");
     }
 
     // Le jeton attaché dépend du type de requête :
@@ -495,7 +483,7 @@ class ApiClient {
 
       clearTimeout(timeoutId);
 
-      if (response.status === 401) {
+            if (response.status === 401) {
         const errJson = await response.json().catch(() => null);
         const serverDetail = errJson?.detail || 'Identifiants incorrects ou session non autorisée (401)';
 
@@ -506,8 +494,7 @@ class ApiClient {
           }));
         }
 
-        // RÈGLE CRITIQUE : Ne JAMAIS déconnecter brutalement la session sur un simple appel de données (ex: /produits, /commandes, /factures).
-        // Une déconnexion automatique (401) n'a de sens QUE si c'est la vérification explicite d'un profil de session (/clients/me, /vendeurs/me).
+        // Ne déconnecter la session que lors de la vérification explicite du profil.
         const isProfileCheck = path === '/clients/me' || path === '/vendeurs/me';
 
         if (isProfileCheck) {
@@ -518,12 +505,6 @@ class ApiClient {
             this.clearAuth();
             window.dispatchEvent(new Event('auth:unauthorized'));
           }
-        }
-
-        // Si des données locales ou de repli existent (catalogue, tournées, historique local),
-        // on les renvoie immédiatement pour maintenir la continuité sans bloquer l'utilisateur.
-        if (fallbackData) {
-          return fallbackData();
         }
 
         const err: any = new Error(serverDetail);
@@ -538,15 +519,13 @@ class ApiClient {
       }
 
       return (await response.json()) as T;
-    } catch (err: any) {
-      clearTimeout(timeoutId);
-      // Si une fonction de données locales est fournie, on l'utilise pour garantir la continuité
-      // SAUF si c'est une tentative de login échouée (loginRequest n'a pas de fallbackData)
-      if (fallbackData) {
-        return fallbackData();
+      } catch (err: any) {
+        clearTimeout(timeoutId);
+        if (err?.name === 'AbortError') {
+          throw new Error('Le serveur ne répond pas (délai dépassé). Vérifiez votre connexion.');
+        }
+        throw err;
       }
-      throw err;
-    }
   }
 
   // Opérations locales persistées
