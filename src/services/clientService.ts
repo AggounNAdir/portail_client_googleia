@@ -76,60 +76,36 @@ export function normalizeBonVente(raw: any): BonVente {
 
 export class ClientService {
   async getMyProfile(): Promise<ClientProfile> {
-    if (!apiClient.hasToken()) {
-      return normalizeProfile(apiClient.getLocalProfile());
-    }
-
-    const raw = await apiClient.request<any>(
-      '/clients/me',
-      { method: 'GET' },
-      () => apiClient.getLocalProfile()
-    );
+    const raw = await apiClient.request<any>('/clients/me', { method: 'GET' });
     return normalizeProfile(raw);
   }
 
   async getFactures(limit = 20, offset = 0): Promise<Facture[]> {
-    if (!apiClient.hasToken()) {
-      return apiClient.getLocalFactures().slice(offset, offset + limit);
-    }
-
     const rawList = await apiClient.request<any[]>(
       `/clients/me/factures?limit=${limit}&offset=${offset}`,
-      { method: 'GET' },
-      () => apiClient.getLocalFactures().slice(offset, offset + limit)
+      { method: 'GET' }
     );
-    if (!Array.isArray(rawList)) return apiClient.getLocalFactures();
+    if (!Array.isArray(rawList)) throw new Error('Réponse invalide du serveur (factures)');
     return rawList.map(normalizeFacture);
   }
 
   async getVersements(limit = 20, offset = 0): Promise<Versement[]> {
-    if (!apiClient.hasToken()) {
-      return apiClient.getLocalVersements().slice(offset, offset + limit);
-    }
-
     const rawList = await apiClient.request<any[]>(
       `/clients/me/versements?limit=${limit}&offset=${offset}`,
-      { method: 'GET' },
-      () => apiClient.getLocalVersements().slice(offset, offset + limit)
+      { method: 'GET' }
     );
-    if (!Array.isArray(rawList)) return apiClient.getLocalVersements();
+    if (!Array.isArray(rawList)) throw new Error('Réponse invalide du serveur (versements)');
     return rawList.map(normalizeVersement);
   }
 
   async getVentes(limit = 20, offset = 0): Promise<BonVente[]> {
-    if (!apiClient.hasToken()) {
-      return apiClient.getLocalVentes().slice(offset, offset + limit);
-    }
-
     const rawList = await apiClient.request<any[]>(
       `/clients/me/ventes?limit=${limit}&offset=${offset}`,
-      { method: 'GET' },
-      () => apiClient.getLocalVentes().slice(offset, offset + limit)
+      { method: 'GET' }
     );
-    if (!Array.isArray(rawList)) return apiClient.getLocalVentes();
+    if (!Array.isArray(rawList)) throw new Error('Réponse invalide du serveur (ventes)');
     return rawList.map(normalizeBonVente);
   }
 }
 
 export const clientService = new ClientService();
-

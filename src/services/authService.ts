@@ -33,6 +33,7 @@ export class AuthService {
       );
 
       const token = data.access_token || data.accessToken || data.token;
+      if (!token) throw new Error('Réponse du serveur invalide : jeton manquant');
       apiClient.saveToken(token, trimmedCode);
 
       return {

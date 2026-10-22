@@ -32,7 +32,7 @@ export const PosCaissePage: React.FC = () => {
     produitService.getCatalogue('', 100).then((items) => {
       setProduitsCatalogue(items);
     }).catch(() => {
-      setProduitsCatalogue(apiClient.getLocalProduits());
+      setProduitsCatalogue([]);
     });
   }, []);
 
@@ -99,7 +99,7 @@ export const PosCaissePage: React.FC = () => {
     e.preventDefault();
     if (!barcodeInput.trim()) return;
     const cleanBar = barcodeInput.trim().toLowerCase();
-    const all = produitsCatalogue.length > 0 ? produitsCatalogue : apiClient.getLocalProduits();
+    const all = produitsCatalogue;
     const found = all.find(
       (a) => a.code.toLowerCase() === cleanBar || a.designation.toLowerCase().includes(cleanBar)
     );

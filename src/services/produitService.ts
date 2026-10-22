@@ -86,25 +86,11 @@ export class ProduitService {
     const rawList = await apiClient.request<any[]>(
       `/produits?${searchParams.toString()}`,
       { method: 'GET' },
-      () => {
-        let items = apiClient.getLocalProduits();
-        if (query && query.trim()) {
-          const q = query.trim().toLowerCase();
-          items = items.filter(
-            (p) =>
-              p.code.toLowerCase().includes(q) ||
-              p.designation.toLowerCase().includes(q)
-          );
-        }
-        return items.slice(offset, offset + limit);
-      },
+      undefined,
       'any'
     );
 
-    if (!Array.isArray(rawList)) {
-      return apiClient.getLocalProduits();
-    }
-
+    if (!Array.isArray(rawList)) throw new Error('Réponse invalide du serveur (produits)');
     return rawList.map(normalizeProduit);
   }
 }
