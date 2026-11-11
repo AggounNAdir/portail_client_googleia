@@ -1,0 +1,52 @@
+"""
+API Portail Client — Application de Gestion de Stock
+======================================================
+Lancement (depuis la racine du projet) :
+    
+uvicorn api.main:app --host 0.0.0.0 --port 8000
+Documentation interactive une fois lancée : http://localhost:8000/docs
+"""
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+
+from api.config import CORS_ORIGINS
+from api.db import init_db
+from api.routers import auth, clients, produits, ventes, factures, versements, commandes, admin, tournee
+
+from contextlib import asynccontextmanager
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Crée/met à niveau TOUTES les tables (schéma unique : api/schema.py).
+    # Fonctionne aussi sur une base vierge : plus besoin de lancer le bureau avant.
+    init_db()
+    yield
+
+app = FastAPI(
+    title="API Portail Client — Gestion de Stock",
+    description="API permettant au portail client de consulter son compte et de passer des commandes.",
+    version="1.0.0",
+    lifespan=lifespan,
+)
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+@app.get("/health", tags=["Santé"])
+def health():
+    return {"status": "ok"}
+
+
+app.include_router(auth.router)
+app.include_router(clients.router)
+app.include_router(produits.router)
+app.include_router(ventes.router)
+app.include_router(factures.router)
+app.include_router(versements.router)
+app.include_router(commandes.router)
+app.include_router(admin.router)
+app.include_router(tournee.router)
