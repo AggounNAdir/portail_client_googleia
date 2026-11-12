@@ -32,7 +32,7 @@ import {
   UserCheck,
   ChevronDown
 } from 'lucide-react';
-import { api } from '../../services/apiClient';
+import { api, type CaisseVendeur, type RemiseAdmin } from '../../services/apiClient';
 
 interface ClientProfile {
   id: number;
@@ -44,6 +44,9 @@ interface ClientProfile {
   solde: number;
   niveau_prix: string;
 }
+
+const fmt = (n: number | string | null | undefined) =>
+  Number(n || 0).toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 interface VendeurProfile {
   id: number;
@@ -105,11 +108,17 @@ export const PortailClientApp: React.FC = () => {
   const [vendeurStock, setVendeurStock] = useState<Record<number, number>>({});
   const [ventesTerrain, setVentesTerrain] = useState<any[]>([]);
   const [versementsTerrain, setVersementsTerrain] = useState<any[]>([]);
+  const [caisse, setCaisse] = useState<CaisseVendeur | null>(null);
+  const [caisseJour, setCaisseJour] = useState<CaisseVendeur | null>(null);
+  const [remises, setRemises] = useState<RemiseAdmin[]>([]);
+  const [caisseError, setCaisseError] = useState('');
 
   // Versement encaissement state
   const [encaisserMontant, setEncaisserMontant] = useState<number>(0);
   const [encaisserMode, setEncaisserMode] = useState<string>('Espèces');
   const [encaisserTiersNom, setEncaisserTiersNom] = useState<string>('');
+  const [encaisserTiersId, setEncaisserTiersId] = useState<string>('');
+  const [encaisserRecherche, setEncaisserRecherche] = useState<string>('');
 
   // Catalogue & Cart
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -260,6 +269,23 @@ export const PortailClientApp: React.FC = () => {
           const vers = await api.getMyVersements();
           setVersementsTerrain(vers || []);
         } catch {}
+
+        // Situation RÉELLE de la caisse : chiffres calculés par le serveur.
+        try {
+          const d = new Date();
+          const aujourdhui = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+          const [c, cj, rem] = await Promise.all([
+            api.getMaCaisse(),
+            api.getMaCaisse(aujourdhui, aujourdhui),
+            api.getMesRemises(),
+          ]);
+          setCaisse(c);
+          setCaisseJour(cj);
+          setRemises(rem || []);
+          setCaisseError('');
+        } catch (err: any) {
+          setCaisseError(err.message || 'Impossible de charger la caisse.');
+        }
       }
     } catch (err: any) {
       console.error('Erreur chargement backend:', err);
@@ -1441,54 +1467,171 @@ export const PortailClientApp: React.FC = () => {
         {/* SITUATION ET CAISSE DU VENDEUR */}
         {navTab === 'situation_vendeur' && authRole === 'vendeur' && (
           <div className="space-y-6">
-            {/* KPI Vendeur Strip */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <div className="bg-slate-800 border border-slate-700/80 rounded-3xl p-5 shadow">
-                <span className="text-[11px] text-slate-400 uppercase font-semibold block">Ventes Terrain Totales</span>
-                <div className="text-2xl font-black text-emerald-400 font-mono mt-1">
-                  {ventesTerrain.reduce((sum, v) => sum + (Number(v.total) || 0), 0).toLocaleString()} DZD
-                </div>
-                <span className="text-[10px] text-slate-500 block mt-1">{ventesTerrain.length} livraisons directes</span>
+            {caisseError && (
+              <div className="bg-red-500/10 border border-red-500/40 text-red-300 rounded-2xl p-4 text-xs flex items-center justify-between">
+                <span>Situation de caisse indisponible : {caisseError}</span>
+                <button onClick={loadBackendData} className="underline cursor-pointer">Réessayer</button>
+              </div>
+            )}
+
+            {/* SITUATION RÉELLE DE LA CAISSE (calculée par le serveur) */}
+            <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 shadow space-y-5">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <Scale size={16} className="text-indigo-400" />
+                  <span>Ma situation réelle</span>
+                </h3>
+                <button
+                  onClick={loadBackendData}
+                  className="text-[11px] text-slate-300 hover:text-white flex items-center space-x-1 cursor-pointer"
+                >
+                  <RefreshCw size={12} />
+                  <span>Actualiser</span>
+                </button>
               </div>
 
-              <div className="bg-slate-800 border border-slate-700/80 rounded-3xl p-5 shadow">
-                <span className="text-[11px] text-slate-400 uppercase font-semibold block">Versements Encaissés</span>
-                <div className="text-2xl font-black text-indigo-400 font-mono mt-1">
-                  {versementsTerrain.reduce((sum, v) => sum + (Number(v.montant) || 0), 0).toLocaleString()} DZD
+              <div
+                className={`rounded-2xl p-5 border ${
+                  (caisse?.reste_a_verser ?? 0) > 0
+                    ? 'bg-amber-500/10 border-amber-500/40'
+                    : 'bg-emerald-500/10 border-emerald-500/40'
+                }`}
+              >
+                <span className="text-[11px] uppercase font-semibold text-slate-300 block">
+                  Reste à verser à l'administration
+                </span>
+                <div
+                  className={`text-3xl font-black font-mono mt-1 ${
+                    (caisse?.reste_a_verser ?? 0) > 0 ? 'text-amber-300' : 'text-emerald-300'
+                  }`}
+                >
+                  {caisse ? fmt(caisse.reste_a_verser) : '—'} DZD
                 </div>
-                <span className="text-[10px] text-slate-500 block mt-1">Total espèces / règlements en main</span>
+                <span className="text-[11px] text-slate-400 block mt-1">
+                  {!caisse
+                    ? 'Chargement…'
+                    : caisse.reste_a_verser > 0
+                    ? 'Espèces encaissées que vous devez encore remettre à l\'administration.'
+                    : caisse.reste_a_verser < 0
+                    ? 'Vous avez versé plus que vos encaissements : contactez l\'administration.'
+                    : 'Caisse à jour : rien à verser.'}
+                </span>
               </div>
 
-              <div className="bg-slate-800 border border-slate-700/80 rounded-3xl p-5 shadow">
-                <span className="text-[11px] text-slate-400 uppercase font-semibold block">Crédit des ventes terrain</span>
-                <div className="text-2xl font-black text-amber-400 font-mono mt-1">
-                  {ventesTerrain.reduce((sum, v) => sum + (Number(v.reste_payer) || 0), 0).toLocaleString()} DZD
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Encaissé aujourd'hui</span>
+                  <div className="font-black text-emerald-400 font-mono mt-1">{caisseJour ? fmt(caisseJour.periode_encaisse_especes) : '—'}</div>
+                  <span className="text-[10px] text-slate-500">espèces, DZD</span>
                 </div>
-                <span className="text-[10px] text-slate-500 block mt-1">Reste dû par les clients et prospects</span>
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Versé aujourd'hui</span>
+                  <div className="font-black text-indigo-400 font-mono mt-1">{caisseJour ? fmt(caisseJour.periode_verse_admin) : '—'}</div>
+                  <span className="text-[10px] text-slate-500">à l'administration, DZD</span>
+                </div>
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total encaissé (espèces)</span>
+                  <div className="font-black text-emerald-400 font-mono mt-1">{caisse ? fmt(caisse.cumul_encaisse_especes) : '—'}</div>
+                  <span className="text-[10px] text-slate-500">depuis le début, DZD</span>
+                </div>
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Total versé</span>
+                  <div className="font-black text-indigo-400 font-mono mt-1">{caisse ? fmt(caisse.cumul_verse_admin) : '—'}</div>
+                  <span className="text-[10px] text-slate-500">depuis le début, DZD</span>
+                </div>
               </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Chiffre d'affaires (ventes)</span>
+                  <div className="font-black text-white font-mono mt-1">{caisse ? fmt(caisse.periode_ca) : '—'} DZD</div>
+                  <span className="text-[10px] text-slate-500">{ventesTerrain.length} livraisons directes terrain</span>
+                </div>
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Reste dû par les clients</span>
+                  <div className="font-black text-amber-400 font-mono mt-1">{caisse ? fmt(caisse.creances_clients) : '—'} DZD</div>
+                  <span className="text-[10px] text-slate-500">
+                    {caisse ? `${caisse.nb_clients_debiteurs} client(s) débiteur(s) • crédit accordé à la vente : ${fmt(caisse.periode_credit)}` : ''}
+                  </span>
+                </div>
+                <div className="bg-slate-900/80 border border-slate-700/80 rounded-2xl p-3">
+                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Valeur du camion</span>
+                  <div className="font-black text-purple-400 font-mono mt-1">{caisse ? fmt(caisse.camion_valeur) : '—'} DZD</div>
+                  <span className="text-[10px] text-slate-500">stock actuel</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Historique des versements remis à l'administration */}
+            <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 space-y-4 shadow">
+              <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                <Receipt size={16} className="text-indigo-400" />
+                <span>Mes versements à l'administration</span>
+              </h3>
+              {remises.length === 0 ? (
+                <div className="py-6 text-center text-xs text-slate-400">
+                  Aucun versement enregistré. Il apparaît ici dès que l'administration reçoit votre argent.
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {remises.map((r) => (
+                    <div
+                      key={r.id}
+                      className={`p-3.5 rounded-2xl bg-slate-900/80 border border-slate-700/80 flex items-center justify-between text-xs ${
+                        r.statut === 'Annulé' ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <div>
+                        <div className="font-bold text-white">{r.numero}</div>
+                        <span className="text-[10px] text-slate-400">
+                          {r.date_vers}{r.reference ? ` • ${r.reference}` : ''}
+                        </span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`text-sm font-black font-mono ${r.statut === 'Annulé' ? 'line-through text-slate-400' : 'text-indigo-300'}`}>
+                          {fmt(r.montant)} DZD
+                        </span>
+                        {r.statut === 'Annulé' && <div className="text-[10px] text-red-400">Annulé</div>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Encaisser un règlement chez un client/prospect */}
             <div className="bg-slate-800 border border-slate-700 rounded-3xl p-6 space-y-4 shadow">
               <h3 className="text-sm font-bold text-white flex items-center space-x-2">
                 <Scale size={16} className="text-indigo-400" />
-                <span>Encaisser un Versement chez un Client ou Prospect</span>
+                <span>Encaisser un Versement chez un Client</span>
               </h3>
 
               <form
                 onSubmit={async (e) => {
                   e.preventDefault();
                   if (encaisserMontant <= 0) return;
+                  if (!encaisserTiersId) {
+                    alert('Sélectionnez un client dans la liste.');
+                    return;
+                  }
+                  const tiers = prospects.find((t: any) => String(t.id) === encaisserTiersId);
+                  if (!tiers) {
+                    alert('Client introuvable, actualisez la liste.');
+                    return;
+                  }
                   try {
                     await api.encaisserVersement({
                       montant: encaisserMontant,
                       mode: encaisserMode,
-                      nom_client: encaisserTiersNom || 'Client Terrain',
-                      vendeur_id: vendeurProfile?.id,
+                      nom_client: tiers.nom,
+                      code_client: tiers.code,
+                      is_prospect: true,
+                      prospect_id: tiers.id,
                     });
                     setEncaisserMontant(0);
-                    setEncaisserTiersNom('');
-                    alert('Versement encaissé avec succès et transmis au backend !');
+                    setEncaisserTiersId('');
+                    setEncaisserRecherche('');
+                    alert(`Versement de ${fmt(encaisserMontant)} DZD encaissé : ${tiers.nom}`);
                     loadBackendData();
                   } catch (err: any) {
                     alert(`Erreur : ${err.message}`);
@@ -1496,31 +1639,53 @@ export const PortailClientApp: React.FC = () => {
                 }}
                 className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs"
               >
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Nom du Client / Prospect :</label>
+                <div className="sm:col-span-2 space-y-2">
                   <input
                     type="text"
-                    required
-                    placeholder="Ex: Supérette El Baraka"
-                    value={encaisserTiersNom}
-                    onChange={(e) => setEncaisserTiersNom(e.target.value)}
+                    placeholder="Rechercher un client (nom ou code)…"
+                    value={encaisserRecherche}
+                    onChange={(e) => setEncaisserRecherche(e.target.value)}
                     className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-indigo-500"
                   />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 mb-1 font-semibold">Montant Reçu (DZD) :</label>
-                  <input
-                    type="number"
+                  <select
                     required
-                    placeholder="Ex: 15000"
-                    value={encaisserMontant || ''}
-                    onChange={(e) => setEncaisserMontant(Number(e.target.value))}
-                    className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white font-mono font-bold focus:outline-none focus:border-indigo-500"
-                  />
+                    value={encaisserTiersId}
+                    onChange={(e) => setEncaisserTiersId(e.target.value)}
+                    className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="">— Choisir un client —</option>
+                    {prospects
+                      .filter((t: any) => {
+                        const q = encaisserRecherche.trim().toLowerCase();
+                        return (
+                          !q ||
+                          String(t.nom || '').toLowerCase().includes(q) ||
+                          String(t.code || '').toLowerCase().includes(q)
+                        );
+                      })
+                      .map((t: any) => (
+                        <option key={t.id} value={String(t.id)}>
+                          {t.nom}
+                          {t.code ? ` (${t.code})` : ''}
+                          {t.solde ? ` — solde ${fmt(t.solde)}` : ''}
+                        </option>
+                      ))}
+                  </select>
                 </div>
 
-                <div className="flex items-end">
+                <div className="space-y-2">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Montant Reçu (DZD) :</label>
+                    <input
+                      type="number"
+                      required
+                      min="1"
+                      placeholder="Ex: 15000"
+                      value={encaisserMontant || ''}
+                      onChange={(e) => setEncaisserMontant(Number(e.target.value))}
+                      className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white font-mono font-bold focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
                   <button
                     type="submit"
                     className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center space-x-2 cursor-pointer"

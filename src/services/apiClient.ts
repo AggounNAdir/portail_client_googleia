@@ -7,6 +7,33 @@ const API_BASE_URL =
   (import.meta as any).env?.VITE_API_URL ||
   `${window.location.protocol}//${window.location.hostname}:8000`;
 
+export interface CaisseVendeur {
+  creances_clients: number;
+  nb_clients_debiteurs: number;
+  periode_ca: number;
+  periode_credit: number;
+  periode_encaisse_total: number;
+  periode_encaisse_especes: number;
+  periode_verse_admin: number;
+  periode_nb_remises: number;
+  cumul_encaisse_especes: number;
+  cumul_verse_admin: number;
+  reste_a_verser: number;
+  camion_valeur: number;
+}
+
+export interface RemiseAdmin {
+  id: number;
+  numero: string;
+  date_vers: string;
+  montant: number;
+  mode: string;
+  reference?: string | null;
+  observations?: string | null;
+  statut: string;
+  cree_par?: string | null;
+}
+
 class ApiService {
   private token: string | null = null;
 
@@ -146,7 +173,7 @@ class ApiService {
   }
 
   async getProspects(): Promise<any[]> {
-    return this.request('/clients/prospects');
+    return this.request('/clients/prospects?limit=200');
   }
 
   // ========== CATALOGUE PRODUITS ==========
@@ -248,6 +275,23 @@ class ApiService {
       method: 'POST',
       body: JSON.stringify(payload),
     });
+  }
+
+  // Situation réelle de caisse, calculée par le serveur (espèces encaissées − remises à l'administration).
+  async getMaCaisse(dateDebut?: string, dateFin?: string): Promise<CaisseVendeur> {
+    const params = new URLSearchParams();
+    if (dateDebut) params.set('date_debut', dateDebut);
+    if (dateFin) params.set('date_fin', dateFin);
+    const qs = params.toString();
+    return this.request(`/tournee/ma-caisse${qs ? `?${qs}` : ''}`);
+  }
+
+  async getMesRemises(dateDebut?: string, dateFin?: string): Promise<RemiseAdmin[]> {
+    const params = new URLSearchParams();
+    if (dateDebut) params.set('date_debut', dateDebut);
+    if (dateFin) params.set('date_fin', dateFin);
+    const qs = params.toString();
+    return this.request(`/tournee/mes-remises${qs ? `?${qs}` : ''}`);
   }
 
   async getVentesTerrainBackend(): Promise<any[]> {
