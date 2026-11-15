@@ -254,10 +254,23 @@ class ApiService {
     });
   }
 
-  async dechargerCamionBackend(): Promise<any> {
-    return this.request('/tournee/dechargement', {
+  // Fin de tournée : le vendeur déclare les colis réellement rendus ; l'administration valide ensuite.
+  async demanderDechargement(
+    lignes: { produit_id: number; quantite_colis: number; motif_ecart?: string }[],
+    observations?: string,
+  ): Promise<DechargementBon> {
+    return this.request('/tournee/dechargement/demande', {
       method: 'POST',
+      body: JSON.stringify({ lignes, observations }),
     });
+  }
+
+  async getMesDechargements(): Promise<DechargementBon[]> {
+    return this.request('/tournee/dechargements');
+  }
+
+  async annulerDechargement(id: number): Promise<DechargementBon> {
+    return this.request(`/tournee/dechargements/${id}/annuler`, { method: 'POST' });
   }
 
   async validerVenteDirecteBackend(payload: {
@@ -300,3 +313,16 @@ class ApiService {
 }
 
 export const api = new ApiService();
+
+export interface DechargementBon {
+  id: number;
+  numero: string;
+  date_demande: string;
+  statut: 'En attente' | 'Validé' | 'Rejeté' | 'Annulé';
+  total_theorique_pieces: number;
+  total_reel_pieces: number;
+  total_ecart_pieces: number;
+  valeur_ecart: number;
+  observations?: string | null;
+  motif_rejet?: string | null;
+}

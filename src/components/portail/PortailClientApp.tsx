@@ -33,6 +33,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { api, type CaisseVendeur, type RemiseAdmin } from '../../services/apiClient';
+import DechargementFinTournee from './DechargementFinTournee';
 
 interface ClientProfile {
   id: number;
@@ -1461,6 +1462,19 @@ export const PortailClientApp: React.FC = () => {
                 </table>
               </div>
             </div>
+
+            <DechargementFinTournee
+              produits={produits}
+              vendeurStock={vendeurStock}
+              onChange={async () => {
+                try {
+                  const stock = await api.getBackendStockCamion();
+                  setVendeurStock(
+                    Object.fromEntries(stock.map((item: any) => [item.produit_id, Number(item.quantite_colis) || 0])),
+                  );
+                } catch {}
+              }}
+            />
           </div>
         )}
 
