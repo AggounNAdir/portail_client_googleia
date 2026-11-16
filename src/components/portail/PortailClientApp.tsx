@@ -33,7 +33,7 @@ import {
   ChevronDown
 } from 'lucide-react';
 import { api, type CaisseVendeur, type RemiseAdmin } from '../../services/apiClient';
-import DechargementFinTournee from './DechargementFinTournee';
+import RetourVendeur from './RetourVendeur';
 
 interface ClientProfile {
   id: number;
@@ -179,6 +179,21 @@ export const PortailClientApp: React.FC = () => {
       loadBackendData();
     }
   }, [token]);
+
+  // Le vendeur voit son camion se mettre à jour quand l'administration charge, confirme un retour…
+  // sans recharger la page : actualisation toutes les 30 s et au retour sur l'onglet.
+  useEffect(() => {
+    if (!token || authRole !== 'vendeur') return;
+    const actualiser = () => {
+      if (!document.hidden) loadBackendData();
+    };
+    const timer = setInterval(actualiser, 30000);
+    document.addEventListener('visibilitychange', actualiser);
+    return () => {
+      clearInterval(timer);
+      document.removeEventListener('visibilitychange', actualiser);
+    };
+  }, [token, authRole]);
 
   const loadBackendData = async () => {
     try {
@@ -1463,7 +1478,7 @@ export const PortailClientApp: React.FC = () => {
               </div>
             </div>
 
-            <DechargementFinTournee
+            <RetourVendeur
               produits={produits}
               vendeurStock={vendeurStock}
               onChange={async () => {

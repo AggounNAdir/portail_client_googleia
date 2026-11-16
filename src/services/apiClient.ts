@@ -256,13 +256,37 @@ class ApiService {
 
   // Fin de tournée : le vendeur déclare les colis réellement rendus ; l'administration valide ensuite.
   async demanderDechargement(
-    lignes: { produit_id: number; quantite_colis: number; motif_ecart?: string }[],
+    lignes: { produit_id: number; quantite_colis: number; quantite_casse_colis?: number; motif_ecart?: string }[],
     observations?: string,
   ): Promise<DechargementBon> {
     return this.request('/tournee/dechargement/demande', {
       method: 'POST',
       body: JSON.stringify({ lignes, observations }),
     });
+  }
+
+  // Retour de marchandise au dépôt : confirmé ensuite par l'administration (le camion baisse à ce moment-là).
+  async getMotifsRetourVendeur(): Promise<{ code: string; libelle: string }[]> {
+    return this.request('/tournee/retours-vendeur/motifs');
+  }
+
+  async demanderRetourVendeur(
+    lignes: { produit_id: number; quantite_colis: number; motif: string; commentaire?: string }[],
+    retourne_par?: string,
+    observations?: string,
+  ): Promise<RetourVendeurBon> {
+    return this.request('/tournee/retour-vendeur', {
+      method: 'POST',
+      body: JSON.stringify({ lignes, retourne_par, observations }),
+    });
+  }
+
+  async getMesRetoursVendeur(): Promise<RetourVendeurBon[]> {
+    return this.request('/tournee/retours-vendeur');
+  }
+
+  async annulerRetourVendeur(id: number): Promise<RetourVendeurBon> {
+    return this.request(`/tournee/retours-vendeur/${id}/annuler`, { method: 'POST' });
   }
 
   async getMesDechargements(): Promise<DechargementBon[]> {
@@ -314,6 +338,18 @@ class ApiService {
 
 export const api = new ApiService();
 
+export interface RetourVendeurBon {
+  id: number;
+  numero: string;
+  date_demande: string;
+  statut: 'En attente' | 'Confirmé' | 'Rejeté' | 'Annulé';
+  retourne_par?: string | null;
+  nb_lignes?: number;
+  total_colis?: number;
+  lignes_a_decider?: number;
+  motif_rejet?: string | null;
+}
+
 export interface DechargementBon {
   id: number;
   numero: string;
@@ -323,6 +359,7 @@ export interface DechargementBon {
   total_reel_pieces: number;
   total_ecart_pieces: number;
   valeur_ecart: number;
+  total_casse_pieces?: number;
   observations?: string | null;
   motif_rejet?: string | null;
 }
