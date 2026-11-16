@@ -793,7 +793,21 @@ export const PortailClientApp: React.FC = () => {
             </div>
           )}
         </section>
-
+        {orderSuccessMsg && (
+          <div className="bg-emerald-500/15 border border-emerald-500/40 text-emerald-300 rounded-2xl px-4 py-3 text-xs font-semibold flex items-center justify-between gap-3">
+            <div className="flex items-center space-x-2">
+              <CheckCircle2 size={16} className="text-emerald-400 shrink-0" />
+              <span>{orderSuccessMsg}</span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setOrderSuccessMsg('')}
+              className="text-emerald-300/80 hover:text-white text-[11px] font-bold cursor-pointer"
+            >
+              Fermer
+            </button>
+          </div>
+        )}
         {/* CONTENU : ACCUEIL COMMERCIAL */}
         {navTab === 'accueil' && authRole === 'vendeur' && (
           <div className="space-y-6">
@@ -1767,7 +1781,131 @@ export const PortailClientApp: React.FC = () => {
             </div>
           </div>
         )}
+        {/* MES COMMANDES CLIENT */}
+        {navTab === 'commandes' && authRole === 'client' && (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                <Clock size={16} className="text-blue-400" />
+                <span>Mes Commandes ({commandes.length})</span>
+              </h3>
+              <div className="flex items-center space-x-2">
+                <button
+                  type="button"
+                  onClick={() => loadBackendData()}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
+                >
+                  <RefreshCw size={13} />
+                  <span>Actualiser</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setNavTab('catalogue')}
+                  className="bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center space-x-1.5 transition cursor-pointer"
+                >
+                  <ShoppingBag size={13} />
+                  <span>Nouvelle commande</span>
+                </button>
+              </div>
+            </div>
 
+            {commandes.length === 0 ? (
+              <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center space-y-3">
+                <p className="text-xs text-slate-400">
+                  Vous n’avez encore passé aucune commande depuis le portail.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setNavTab('catalogue')}
+                  className="bg-blue-600 hover:bg-blue-500 text-white px-4 py-2 rounded-xl text-xs font-bold inline-flex items-center space-x-2 transition cursor-pointer"
+                >
+                  <ShoppingBag size={14} />
+                  <span>Parcourir le catalogue</span>
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {commandes.map((cmd: any) => {
+                  const statutLower = String(cmd.statut || 'En attente').toLowerCase();
+                  const badgeClass =
+                    statutLower.includes('annul') || statutLower.includes('refus')
+                      ? 'bg-rose-500/15 text-rose-300 border-rose-500/30'
+                      : statutLower.includes('valid') ||
+                          statutLower.includes('livr') ||
+                          statutLower.includes('trait')
+                        ? 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30'
+                        : 'bg-amber-500/15 text-amber-300 border-amber-500/30';
+
+                  return (
+                    <section
+                      key={cmd.id}
+                      className="bg-slate-800 border border-slate-700 rounded-2xl p-4 space-y-3"
+                    >
+                      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-700 pb-3">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-mono font-bold text-blue-400">
+                              {cmd.numero || `CMD-${cmd.id}`}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-lg border ${badgeClass}`}
+                            >
+                              {cmd.statut || 'En attente'}
+                            </span>
+                            {cmd.bon_vente_id && (
+                              <span className="text-[10px] font-semibold bg-blue-500/15 text-blue-300 border border-blue-500/30 px-2 py-0.5 rounded-lg">
+                                BL #{cmd.bon_vente_id}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-xs text-slate-400">
+                            {cmd.date_commande}
+                            {cmd.observations ? ` · ${cmd.observations}` : ''}
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          <div className="text-[10px] uppercase text-slate-400">Total</div>
+                          <div className="font-mono font-bold text-white">
+                            {fmt(cmd.montant_total)} DZD
+                          </div>
+                        </div>
+                      </div>
+
+                      {(cmd.lignes || []).length === 0 ? (
+                        <p className="text-xs text-slate-400">
+                          Aucun détail d’article pour cette commande.
+                        </p>
+                      ) : (
+                        <div className="divide-y divide-slate-700/70">
+                          {cmd.lignes.map((ligne: any, index: number) => (
+                            <div
+                              key={`${ligne.produit_id}-${index}`}
+                              className="flex flex-wrap items-center justify-between gap-2 py-2 text-xs"
+                            >
+                              <div>
+                                <div className="font-semibold text-white">
+                                  {ligne.designation || `Produit #${ligne.produit_id}`}
+                                </div>
+                                <div className="text-slate-400">
+                                  {Number(ligne.quantite || 0).toLocaleString('fr-FR')} ×{' '}
+                                  {fmt(ligne.prix_unitaire)} DZD
+                                </div>
+                              </div>
+                              <div className="font-mono font-semibold text-slate-200">
+                                {fmt(ligne.total)} DZD
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </section>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
         {/* BONS DE LIVRAISON CLIENT */}
         {navTab === 'bons' && authRole === 'client' && (
           <div className="space-y-4">
