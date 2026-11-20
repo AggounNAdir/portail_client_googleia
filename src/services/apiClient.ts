@@ -171,6 +171,23 @@ class ApiService {
       body: JSON.stringify(payload),
     });
   }
+  async getClients(): Promise<any[]> {
+    return this.request('/clients');
+  }
+
+  async updateClientGps(clientId: number, latitude: number, longitude: number): Promise<any> {
+    return this.request(`/clients/${clientId}/gps`, {
+      method: 'PATCH',
+      body: JSON.stringify({ latitude, longitude }),
+    });
+  }
+
+  async updateProspectGps(prospectId: number, latitude: number, longitude: number): Promise<any> {
+    return this.request(`/clients/prospects/${prospectId}/gps`, {
+      method: 'PATCH',
+      body: JSON.stringify({ latitude, longitude }),
+    });
+  }
 
   async getProspects(): Promise<any[]> {
     return this.request('/clients/prospects?limit=200');

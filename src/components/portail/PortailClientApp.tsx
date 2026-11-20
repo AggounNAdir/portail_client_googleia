@@ -98,6 +98,7 @@ export const PortailClientApp: React.FC = () => {
   const [ventes, setVentes] = useState<any[]>([]);
   const [pointages, setPointages] = useState<any[]>([]);
   const [prospects, setProspects] = useState<any[]>([]);
+  const [clientsOfficiels, setClientsOfficiels] = useState<any[]>([]);
 
   // Navigation tab
   const [navTab, setNavTab] = useState<
@@ -131,21 +132,28 @@ export const PortailClientApp: React.FC = () => {
   const [modeReglementVente, setModeReglementVente] = useState('Espèces');
   const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
 
-  // Tournée / Pointage GPS form
-  const [gpsClientName, setGpsClientName] = useState('');
+  // Tournée / Pointage GPS & Localisation clients/prospects
+  const [gpsProspectId, setGpsProspectId] = useState<number | null>(null);
   const [gpsObservations, setGpsObservations] = useState('');
   const [gpsSuccessMsg, setGpsSuccessMsg] = useState('');
+  const [gpsErrorMsg, setGpsErrorMsg] = useState('');
+  const [gpsCoords, setGpsCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [isLocatingGps, setIsLocatingGps] = useState(false);
+  const [clientGpsSearch, setClientGpsSearch] = useState('');
+  const [updatingGpsTarget, setUpdatingGpsTarget] = useState<string | null>(null);
 
   // Prospect form
   const [newProspectNom, setNewProspectNom] = useState('');
   const [newProspectTel, setNewProspectTel] = useState('');
   const [newProspectAdresse, setNewProspectAdresse] = useState('');
   const [newProspectWilaya, setNewProspectWilaya] = useState('');
+  const [newProspectCoords, setNewProspectCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [prospectFeedbackMsg, setProspectFeedbackMsg] = useState('');
 
   // Vendeur order target: Prospect or Client
   const [targetType, setTargetType] = useState<'prospect' | 'client'>('prospect');
   const [selectedProspectId, setSelectedProspectId] = useState<number | null>(null);
-  const [selectedClientCode, setSelectedClientCode] = useState<string>('CL-001');
+  const [selectedClientCode, setSelectedClientCode] = useState<string>('');
     // Relevé de compte client
   const [situation, setSituation] = useState<any | null>(null);
   const [sitDebut, setSitDebut] = useState('');
@@ -257,8 +265,21 @@ export const PortailClientApp: React.FC = () => {
         } catch {}
 
         try {
-          const prosps = await api.getProspects();
-          setProspects(prosps || []);
+          const [prosps, clts] = await Promise.all([
+            api.getProspects(),
+            api.getClients(),
+          ]);
+          const listProsps = prosps || [];
+          const listClts = clts || [];
+          setProspects(listProsps);
+          setClientsOfficiels(listClts);
+          if (listProsps.length > 0) {
+            setSelectedProspectId((prev) => prev ?? listProsps[0].id);
+            setGpsProspectId((prev) => prev ?? listProsps[0].id);
+          }
+          if (listClts.length > 0) {
+            setSelectedClientCode((prev) => prev || listClts[0].code);
+          }
         } catch {}
 
         // Charger le stock et les ventes depuis le backend, source de vérité.
@@ -416,6 +437,7 @@ export const PortailClientApp: React.FC = () => {
 
       if (authRole === 'vendeur') {
         let selectedProspect: any | undefined;
+        let selectedClient: any | undefined;
         if (targetType === 'prospect') {
           const prospectId = selectedProspectId ?? prospects[0]?.id;
           selectedProspect = prospects.find((prospect) => prospect.id === prospectId);
@@ -423,8 +445,10 @@ export const PortailClientApp: React.FC = () => {
             throw new Error('Sélectionnez un prospect valide avant de continuer.');
           }
         } else {
-          if (!selectedClientCode.trim()) {
-            throw new Error('Saisissez le code du client avant de continuer.');
+          const codeCible = (selectedClientCode || clientsOfficiels[0]?.code || '').trim();
+          selectedClient = clientsOfficiels.find((c) => c.code === codeCible);
+          if (!codeCible) {
+            throw new Error('Sélectionnez ou saisissez un client officiel avant de continuer.');
           }
         }
 
@@ -445,7 +469,13 @@ export const PortailClientApp: React.FC = () => {
           const result = await api.validerVenteDirecteBackend({
             is_prospect: targetType === 'prospect',
             prospect_id: targetType === 'prospect' ? selectedProspect.id : undefined,
-            code_client: targetType === 'client' ? selectedClientCode.trim() : undefined,
+            client_id: targetType === 'client' ? selectedClient?.id : undefined,
+            code_client:
+              targetType === 'client'
+                ? selectedClient?.code || selectedClientCode.trim()
+                : undefined,
+            nom_client:
+              targetType === 'client' ? selectedClient?.nom : selectedProspect?.nom,
             lignes: lignes.map(({ produit_id, quantite, prix_unitaire }) => ({
               produit_id,
               quantite,
@@ -466,8 +496,13 @@ export const PortailClientApp: React.FC = () => {
             ...payload,
             is_prospect: targetType === 'prospect',
             prospect_id: targetType === 'prospect' ? selectedProspect?.id : undefined,
-            code_client: targetType === 'client' ? selectedClientCode.trim() : undefined,
-            nom_client: targetType === 'prospect' ? selectedProspect?.nom : undefined,
+            client_id: targetType === 'client' ? selectedClient?.id : undefined,
+            code_client:
+              targetType === 'client'
+                ? selectedClient?.code || selectedClientCode.trim()
+                : undefined,
+            nom_client:
+              targetType === 'prospect' ? selectedProspect?.nom : selectedClient?.nom,
           };
           const result = await api.createCommande(commandePayload);
           setCart([]);
@@ -493,43 +528,172 @@ export const PortailClientApp: React.FC = () => {
     }
   };
 
-  // Vendeur actions
+  // Vendeur actions & GPS
+  const obtenirPositionNavigateur = (): Promise<{ latitude: number; longitude: number } | null> =>
+    new Promise((resolve) => {
+      if (typeof navigator === 'undefined' || !navigator.geolocation) {
+        resolve(null);
+        return;
+      }
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          resolve({
+            latitude: Number(pos.coords.latitude.toFixed(6)),
+            longitude: Number(pos.coords.longitude.toFixed(6)),
+          });
+        },
+        () => resolve(null),
+        { enableHighAccuracy: true, timeout: 8000, maximumAge: 60000 },
+      );
+    });
+
+  const handleCapturerGps = async () => {
+    setGpsErrorMsg('');
+    setIsLocatingGps(true);
+    try {
+      const coords = await obtenirPositionNavigateur();
+      if (!coords) {
+        setGpsErrorMsg(
+          "Impossible d'obtenir la position GPS du navigateur (autorisation refusée ou connexion non HTTPS).",
+        );
+      } else {
+        setGpsCoords(coords);
+      }
+    } finally {
+      setIsLocatingGps(false);
+    }
+  };
+
   const handleEnregistrerPointage = async (e: React.FormEvent) => {
     e.preventDefault();
+    setGpsErrorMsg('');
+    setGpsSuccessMsg('');
+    setIsLocatingGps(true);
     try {
+      const pid = gpsProspectId ?? prospects[0]?.id;
+      const prospect = prospects.find((p) => p.id === pid);
+      if (!prospect) {
+        throw new Error('Sélectionnez un prospect valide avant de pointer la visite.');
+      }
+
+      const codeProspect = prospect.code || `PROSP-${prospect.id}`;
+      const coords = gpsCoords ?? (await obtenirPositionNavigateur());
+      if (coords) setGpsCoords(coords);
+
       await api.enregistrerPointage({
-        nom_client: gpsClientName,
-        observations: gpsObservations,
-        latitude: 36.752887,
-        longitude: 3.042048,
+        code_client: codeProspect,
+        nom_client: prospect.nom,
+        observations: gpsObservations.trim() || undefined,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
       });
-      setGpsClientName('');
+
       setGpsObservations('');
-      setGpsSuccessMsg('Pointage GPS de visite enregistré !');
-      loadBackendData();
-      setTimeout(() => setGpsSuccessMsg(''), 5000);
+      setGpsSuccessMsg(
+        coords
+          ? `Visite enregistrée chez ${prospect.nom} (${coords.latitude}, ${coords.longitude}).`
+          : `Visite enregistrée chez ${prospect.nom} (sans coordonnées GPS).`,
+      );
+      await loadBackendData();
+      setTimeout(() => setGpsSuccessMsg(''), 6000);
     } catch (err: any) {
-      alert(`Erreur : ${err.message}`);
+      setGpsErrorMsg(err.message || 'Erreur lors du pointage.');
+    } finally {
+      setIsLocatingGps(false);
+    }
+  };
+
+  const handleMajGpsClient = async (clientItem: any) => {
+    setGpsErrorMsg('');
+    setGpsSuccessMsg('');
+    setUpdatingGpsTarget(`client-${clientItem.id}`);
+    try {
+      const coords = await obtenirPositionNavigateur();
+      if (!coords) {
+        throw new Error(
+          "Position GPS indisponible depuis ce navigateur (autorisez la géolocalisation).",
+        );
+      }
+      await api.updateClientGps(clientItem.id, coords.latitude, coords.longitude);
+      setGpsSuccessMsg(
+        `Position GPS enregistrée pour le client ${clientItem.nom} (${coords.latitude}, ${coords.longitude}).`,
+      );
+      await loadBackendData();
+      setTimeout(() => setGpsSuccessMsg(''), 6000);
+    } catch (err: any) {
+      setGpsErrorMsg(err.message || 'Erreur mise à jour GPS client.');
+    } finally {
+      setUpdatingGpsTarget(null);
+    }
+  };
+
+  const handleCapturerGpsNouveauProspect = async () => {
+    setProspectFeedbackMsg('');
+    setIsLocatingGps(true);
+    try {
+      const coords = await obtenirPositionNavigateur();
+      if (!coords) {
+        setProspectFeedbackMsg(
+          "Position GPS indisponible (autorisez la géolocalisation dans le navigateur).",
+        );
+      } else {
+        setNewProspectCoords(coords);
+      }
+    } finally {
+      setIsLocatingGps(false);
+    }
+  };
+
+  const handleMajGpsProspect = async (prospect: any) => {
+    setProspectFeedbackMsg('');
+    setUpdatingGpsTarget(`prospect-${prospect.id}`);
+    try {
+      const coords = await obtenirPositionNavigateur();
+      if (!coords) {
+        throw new Error(
+          "Position GPS indisponible depuis ce navigateur (autorisez la géolocalisation).",
+        );
+      }
+      await api.updateProspectGps(prospect.id, coords.latitude, coords.longitude);
+      setProspectFeedbackMsg(
+        `Position GPS enregistrée pour ${prospect.nom} (${coords.latitude}, ${coords.longitude}).`,
+      );
+      await loadBackendData();
+      setTimeout(() => setProspectFeedbackMsg(''), 6000);
+    } catch (err: any) {
+      setProspectFeedbackMsg(`Erreur : ${err.message}`);
+    } finally {
+      setUpdatingGpsTarget(null);
     }
   };
 
   const handleCreerProspect = async (e: React.FormEvent) => {
     e.preventDefault();
+    setProspectFeedbackMsg('');
     try {
+      const coords = newProspectCoords ?? (await obtenirPositionNavigateur());
       await api.creerProspect({
         nom: newProspectNom,
         tel: newProspectTel,
         adresse: newProspectAdresse,
         wilaya: newProspectWilaya,
+        latitude: coords?.latitude,
+        longitude: coords?.longitude,
       });
       setNewProspectNom('');
       setNewProspectTel('');
       setNewProspectAdresse('');
       setNewProspectWilaya('');
-      alert('Nouveau prospect terrain enregistré !');
-      loadBackendData();
+      setNewProspectCoords(null);
+      setProspectFeedbackMsg(
+        coords
+          ? `Prospect enregistré avec position GPS (${coords.latitude}, ${coords.longitude}) !`
+          : 'Nouveau prospect terrain enregistré !',
+      );
+      await loadBackendData();
+      setTimeout(() => setProspectFeedbackMsg(''), 6000);
     } catch (err: any) {
-      alert(`Erreur : ${err.message}`);
+      setProspectFeedbackMsg(`Erreur : ${err.message}`);
     }
   };
 
@@ -1111,15 +1275,30 @@ export const PortailClientApp: React.FC = () => {
                   ) : (
                     <div>
                       <label className="text-[10px] text-slate-400 block mb-1">
-                        Code client officiel :
+                        Sélectionner le client officiel :
                       </label>
-                      <input
-                        type="text"
-                        value={selectedClientCode}
-                        onChange={(e) => setSelectedClientCode(e.target.value)}
-                        placeholder="Ex: CL-001"
-                        className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500 text-xs font-mono"
-                      />
+                      {clientsOfficiels.length === 0 ? (
+                        <input
+                          type="text"
+                          value={selectedClientCode}
+                          onChange={(e) => setSelectedClientCode(e.target.value)}
+                          placeholder="Ex: CLT-0001"
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500 text-xs font-mono"
+                        />
+                      ) : (
+                        <select
+                          value={selectedClientCode || clientsOfficiels[0]?.code || ''}
+                          onChange={(e) => setSelectedClientCode(e.target.value)}
+                          className="w-full bg-slate-950 border border-slate-700 rounded-lg p-2 text-white focus:outline-none focus:border-blue-500 text-xs"
+                        >
+                          {clientsOfficiels.map((c) => (
+                            <option key={c.id} value={c.code}>
+                              {c.nom} ({c.code}) — Solde {fmt(c.solde)} DZD
+                              {c.latitude != null && c.longitude != null ? ' · 📍 GPS OK' : ''}
+                            </option>
+                          ))}
+                        </select>
+                      )}
                     </div>
                   )}
                   {/* Vendeur mode: Vente directe avec déstockage camion immédiat OU Commande en attente */}
@@ -1231,56 +1410,257 @@ export const PortailClientApp: React.FC = () => {
           </div>
         )}
 
-        {/* TOURNÉE TERRAIN (POINTAGE GPS) */}
+        {/* TOURNÉE TERRAIN : VISITES PROSPECTS + GPS CLIENTS OFFICIELS */}
         {navTab === 'tournee' && authRole === 'vendeur' && (
-          <div className="space-y-4 max-w-xl">
-            <h3 className="text-sm font-bold text-white flex items-center space-x-2">
-              <MapPin size={16} className="text-indigo-400" />
-              <span>Pointage de Visite Client Géolocalisé</span>
-            </h3>
-
+          <div className="space-y-6">
             {gpsSuccessMsg && (
               <div className="p-3 bg-emerald-600/20 border border-emerald-500/40 text-emerald-300 rounded-xl text-xs font-bold">
                 {gpsSuccessMsg}
               </div>
             )}
 
-            <form onSubmit={handleEnregistrerPointage} className="bg-slate-800 border border-slate-700 p-5 rounded-2xl space-y-3 text-xs">
-              <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Nom du Client visité :</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="Ex: Superette El Baraka"
-                  value={gpsClientName}
-                  onChange={(e) => setGpsClientName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-indigo-500"
-                />
+            {gpsErrorMsg && (
+              <div className="p-3 bg-rose-600/20 border border-rose-500/40 text-rose-300 rounded-xl text-xs font-bold">
+                {gpsErrorMsg}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              {/* Colonne gauche : Pointage de visite prospect */}
+              <div className="lg:col-span-5 space-y-4">
+                <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                  <MapPin size={16} className="text-indigo-400" />
+                  <span>Pointage de Visite Prospect Géolocalisé</span>
+                </h3>
+
+                <form onSubmit={handleEnregistrerPointage} className="bg-slate-800 border border-slate-700 p-5 rounded-2xl space-y-3 text-xs">
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Prospect visité :</label>
+                    {prospects.length === 0 ? (
+                      <div className="bg-slate-900 border border-amber-500/30 rounded-xl p-3 space-y-2">
+                        <p className="text-amber-300">Aucun prospect enregistré.</p>
+                        <button
+                          type="button"
+                          onClick={() => setNavTab('prospects')}
+                          className="bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold cursor-pointer"
+                        >
+                          Créer un prospect
+                        </button>
+                      </div>
+                    ) : (
+                      <select
+                        value={gpsProspectId ?? prospects[0]?.id ?? ''}
+                        onChange={(e) => setGpsProspectId(Number(e.target.value))}
+                        className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                      >
+                        {prospects.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.nom} ({p.code}) — {p.wilaya || 'N/A'}
+                          </option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 flex items-center justify-between gap-2">
+                    <div className="text-[11px] text-slate-300">
+                      <span className="font-semibold block text-slate-400">Position GPS :</span>
+                      {gpsCoords ? (
+                        <span className="font-mono text-emerald-400">
+                          {gpsCoords.latitude}, {gpsCoords.longitude}
+                        </span>
+                      ) : (
+                        <span className="text-slate-500">Sera capturée à l’envoi</span>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleCapturerGps}
+                      disabled={isLocatingGps}
+                      className="bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
+                    >
+                      <Compass size={13} />
+                      <span>{isLocatingGps ? 'Localisation...' : 'Capturer GPS'}</span>
+                    </button>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-300 mb-1 font-semibold">Observations de visite :</label>
+                    <textarea
+                      rows={2}
+                      placeholder="Ex: Présentation catalogue, besoin estimé..."
+                      value={gpsObservations}
+                      onChange={(e) => setGpsObservations(e.target.value)}
+                      className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLocatingGps || prospects.length === 0}
+                    className="w-full bg-indigo-600 hover:bg-indigo-500 disabled:opacity-60 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center space-x-2 cursor-pointer"
+                  >
+                    <Navigation size={14} />
+                    <span>{isLocatingGps ? 'Localisation...' : 'Enregistrer la Visite GPS'}</span>
+                  </button>
+                </form>
               </div>
 
-              <div>
-                <label className="block text-slate-300 mb-1 font-semibold">Observations de visite :</label>
-                <textarea
-                  rows={2}
-                  placeholder="Ex: Commande passée, stock vérifié..."
-                  value={gpsObservations}
-                  onChange={(e) => setGpsObservations(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-700 p-2.5 rounded-xl text-white focus:outline-none focus:border-indigo-500"
-                />
+              {/* Colonne droite : Historique des visites */}
+              <div className="lg:col-span-7 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                    <Clock size={16} className="text-blue-400" />
+                    <span>Historique des Visites ({pointages.length})</span>
+                  </h3>
+                  <button
+                    type="button"
+                    onClick={() => loadBackendData()}
+                    className="bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition cursor-pointer"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Actualiser</span>
+                  </button>
+                </div>
+
+                {pointages.length === 0 ? (
+                  <div className="bg-slate-800 border border-slate-700 rounded-2xl p-8 text-center text-xs text-slate-400">
+                    Aucune visite enregistrée pour le moment.
+                  </div>
+                ) : (
+                  <div className="space-y-2.5 max-h-[380px] overflow-y-auto pr-1">
+                    {pointages.map((pt: any) => (
+                      <div
+                        key={pt.id}
+                        className="bg-slate-800 border border-slate-700/80 rounded-2xl p-3.5 flex flex-wrap items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="space-y-1">
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-white">{pt.nom_client || 'Prospect'}</span>
+                            {pt.code_client && (
+                              <span className="font-mono text-[10px] bg-slate-900 text-indigo-300 border border-slate-700 px-2 py-0.5 rounded-md">
+                                {pt.code_client}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[11px] text-slate-400">
+                            {pt.date_pointage}
+                            {pt.observations ? ` · ${pt.observations}` : ''}
+                          </div>
+                        </div>
+
+                        <div className="text-right font-mono text-[11px]">
+                          {pt.latitude != null && pt.longitude != null ? (
+                            <a
+                              href={`https://www.google.com/maps?q=${pt.latitude},${pt.longitude}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-emerald-400 hover:underline"
+                            >
+                              {Number(pt.latitude).toFixed(5)}, {Number(pt.longitude).toFixed(5)}
+                            </a>
+                          ) : (
+                            <span className="text-slate-500">Sans GPS</span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Section GPS Clients Officiels (créés dans le backend) */}
+            <div className="bg-slate-800/80 border border-slate-700 rounded-2xl p-5 space-y-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-sm font-bold text-white flex items-center space-x-2">
+                    <Compass size={16} className="text-blue-400" />
+                    <span>Géolocalisation des Clients Officiels ({clientsOfficiels.length})</span>
+                  </h3>
+                  <p className="text-[11px] text-slate-400 mt-0.5">
+                    Enregistrez ou actualisez la position GPS des clients créés dans le back-office lorsque vous êtes sur place.
+                  </p>
+                </div>
+                <div className="relative w-full sm:w-64">
+                  <Search size={14} className="absolute left-3 top-2.5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={clientGpsSearch}
+                    onChange={(e) => setClientGpsSearch(e.target.value)}
+                    placeholder="Rechercher nom ou code..."
+                    className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-8 pr-3 py-2 text-xs text-white focus:outline-none focus:border-blue-500"
+                  />
+                </div>
               </div>
 
-              <button
-                type="submit"
-                className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center space-x-2 cursor-pointer"
-              >
-                <Navigation size={14} />
-                <span>Enregistrer le Pointage GPS</span>
-              </button>
-            </form>
+              {clientsOfficiels.length === 0 ? (
+                <p className="text-xs text-slate-400 text-center py-4">
+                  Aucun client officiel trouvé.
+                </p>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-1">
+                  {clientsOfficiels
+                    .filter((c) => {
+                      const q = clientGpsSearch.trim().toLowerCase();
+                      if (!q) return true;
+                      return (
+                        String(c.nom || '').toLowerCase().includes(q) ||
+                        String(c.code || '').toLowerCase().includes(q)
+                      );
+                    })
+                    .map((c) => {
+                      const hasGps = c.latitude != null && c.longitude != null;
+                      const isBusy = updatingGpsTarget === `client-${c.id}`;
+                      return (
+                        <div
+                          key={c.id}
+                          className="bg-slate-900/90 border border-slate-700/80 rounded-xl p-3.5 flex items-center justify-between gap-3 text-xs"
+                        >
+                          <div className="min-w-0 space-y-1">
+                            <div className="flex items-center space-x-2">
+                              <span className="font-bold text-white truncate">{c.nom}</span>
+                              <span className="font-mono text-[10px] bg-blue-500/15 text-blue-300 border border-blue-500/30 px-1.5 py-0.5 rounded">
+                                {c.code}
+                              </span>
+                            </div>
+                            <div className="text-[11px] text-slate-400 truncate">
+                              {c.adresse || c.tel || 'Aucune adresse'}
+                            </div>
+                            <div className="text-[11px] font-mono">
+                              {hasGps ? (
+                                <a
+                                  href={`https://www.google.com/maps?q=${c.latitude},${c.longitude}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-emerald-400 hover:underline"
+                                >
+                                  📍 {Number(c.latitude).toFixed(5)}, {Number(c.longitude).toFixed(5)}
+                                </a>
+                              ) : (
+                                <span className="text-amber-400">GPS non enregistré</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <button
+                            type="button"
+                            onClick={() => handleMajGpsClient(c)}
+                            disabled={isBusy}
+                            className="shrink-0 bg-blue-600/20 hover:bg-blue-600/40 disabled:opacity-60 text-blue-300 border border-blue-500/40 px-3 py-1.5 rounded-xl text-[11px] font-bold transition cursor-pointer"
+                          >
+                            {isBusy ? 'Localisation...' : hasGps ? 'Actualiser GPS' : 'Enregistrer GPS'}
+                          </button>
+                        </div>
+                      );
+                    })}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
-        {/* GESTION PROSPECTS TERRAIN (LISTE & CRÉATION) */}
+        {/* GESTION PROSPECTS TERRAIN (LISTE & CRÉATION AVEC GPS) */}
         {navTab === 'prospects' && authRole === 'vendeur' && (
           <div className="grid grid-cols-1 md:grid-cols-12 gap-6">
             {/* Formulaire nouveau prospect (5 cols) */}
@@ -1289,6 +1669,18 @@ export const PortailClientApp: React.FC = () => {
                 <Users size={16} className="text-indigo-400" />
                 <span>Nouveau Prospect Terrain</span>
               </h3>
+
+              {prospectFeedbackMsg && (
+                <div
+                  className={`p-3 rounded-xl text-xs font-bold border ${
+                    prospectFeedbackMsg.startsWith('Erreur') || prospectFeedbackMsg.includes('indisponible')
+                      ? 'bg-rose-600/20 border-rose-500/40 text-rose-300'
+                      : 'bg-emerald-600/20 border-emerald-500/40 text-emerald-300'
+                  }`}
+                >
+                  {prospectFeedbackMsg}
+                </div>
+              )}
 
               <form onSubmit={handleCreerProspect} className="bg-slate-800 border border-slate-700 p-5 rounded-2xl space-y-3 text-xs">
                 <div>
@@ -1337,6 +1729,28 @@ export const PortailClientApp: React.FC = () => {
                   />
                 </div>
 
+                <div className="bg-slate-900 border border-slate-700 rounded-xl p-3 flex items-center justify-between gap-2">
+                  <div className="text-[11px]">
+                    <span className="font-semibold block text-slate-400">Position GPS :</span>
+                    {newProspectCoords ? (
+                      <span className="font-mono text-emerald-400">
+                        {newProspectCoords.latitude}, {newProspectCoords.longitude}
+                      </span>
+                    ) : (
+                      <span className="text-slate-500">Auto-capturée à l’enregistrement</span>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleCapturerGpsNouveauProspect}
+                    disabled={isLocatingGps}
+                    className="bg-slate-800 hover:bg-slate-700 text-indigo-300 border border-slate-600 px-3 py-1.5 rounded-lg text-[11px] font-bold flex items-center space-x-1 cursor-pointer"
+                  >
+                    <Compass size={13} />
+                    <span>{isLocatingGps ? 'Localisation...' : 'Capturer GPS'}</span>
+                  </button>
+                </div>
+
                 <button
                   type="submit"
                   className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold py-2.5 rounded-xl transition shadow flex items-center justify-center space-x-2 cursor-pointer"
@@ -1367,43 +1781,69 @@ export const PortailClientApp: React.FC = () => {
                   Aucun prospect enregistré pour le moment. Remplissez le formulaire pour en ajouter un.
                 </div>
               ) : (
-                <div className="space-y-2.5 max-h-[500px] overflow-y-auto pr-1">
-                  {prospects.map((p) => (
-                    <div
-                      key={p.id}
-                      className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 flex items-center justify-between shadow-sm hover:border-indigo-500/40 transition"
-                    >
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <span className="font-bold text-xs text-white">{p.nom}</span>
-                          <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono px-1.5 py-0.2 rounded">
-                            {p.code}
-                          </span>
+                <div className="space-y-2.5 max-h-[540px] overflow-y-auto pr-1">
+                  {prospects.map((p) => {
+                    const hasGps = p.latitude != null && p.longitude != null;
+                    const isBusy = updatingGpsTarget === `prospect-${p.id}`;
+                    return (
+                      <div
+                        key={p.id}
+                        className="bg-slate-800 border border-slate-700/80 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-3 shadow-sm hover:border-indigo-500/40 transition"
+                      >
+                        <div>
+                          <div className="flex items-center space-x-2">
+                            <span className="font-bold text-xs text-white">{p.nom}</span>
+                            <span className="bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 text-[10px] font-mono px-1.5 py-0.2 rounded">
+                              {p.code}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-3">
+                            <span>Wilaya : <b className="text-slate-300">{p.wilaya || 'N/A'}</b></span>
+                            {p.tel && <span>Tél : <b className="text-slate-300">{p.tel}</b></span>}
+                          </div>
+                          {p.adresse && (
+                            <div className="text-[10px] text-slate-500 mt-0.5">{p.adresse}</div>
+                          )}
+                          <div className="text-[11px] font-mono mt-1">
+                            {hasGps ? (
+                              <a
+                                href={`https://www.google.com/maps?q=${p.latitude},${p.longitude}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-emerald-400 hover:underline"
+                              >
+                                📍 {Number(p.latitude).toFixed(5)}, {Number(p.longitude).toFixed(5)}
+                              </a>
+                            ) : (
+                              <span className="text-amber-400">GPS non enregistré</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="text-[11px] text-slate-400 mt-1 flex flex-wrap gap-x-3">
-                          <span>Wilaya : <b className="text-slate-300">{p.wilaya || 'N/A'}</b></span>
-                          {p.tel && <span>Tél : <b className="text-slate-300">{p.tel}</b></span>}
-                        </div>
-                        {p.adresse && (
-                          <div className="text-[10px] text-slate-500 mt-0.5">{p.adresse}</div>
-                        )}
-                      </div>
 
-                      <div>
-                        <button
-                          onClick={() => {
-                            setSelectedProspectId(p.id);
-                            setTargetType('prospect');
-                            setNavTab('catalogue');
-                          }}
-                          className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
-                        >
-                          <ShoppingCart size={13} />
-                          <span>Prendre commande</span>
-                        </button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => handleMajGpsProspect(p)}
+                            disabled={isBusy}
+                            className="bg-emerald-600/20 hover:bg-emerald-600/40 disabled:opacity-60 text-emerald-300 border border-emerald-500/40 px-2.5 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer"
+                          >
+                            {isBusy ? 'Localisation...' : hasGps ? '📍 MAJ GPS' : '📍 GPS ici'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedProspectId(p.id);
+                              setTargetType('prospect');
+                              setNavTab('catalogue');
+                            }}
+                            className="bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 border border-indigo-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition flex items-center space-x-1 cursor-pointer"
+                          >
+                            <ShoppingCart size={13} />
+                            <span>Prendre commande</span>
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </div>
